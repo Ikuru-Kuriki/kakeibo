@@ -2,6 +2,7 @@ import { useLiveQuery } from 'dexie-react-hooks';
 import type { YearMonth } from '../domain/types';
 import { DEFAULT_SETTINGS } from '../domain/types';
 import {
+  earliestTransactionDate,
   getSettings,
   listBudgets,
   listCategories,
@@ -48,4 +49,14 @@ export function usePendingRecurring() {
   const { monthStartDay } = useSettings();
   const current = currentPeriod(monthStartDay);
   return useLiveQuery(() => listPendingRecurring(current), [current]);
+}
+
+export function useEarliestTransactionDate() {
+  return useLiveQuery(earliestTransactionDate, []);
+}
+
+/** 複数月の予算をまとめて購読する（月の順に配列で返す） */
+export function useBudgetsForMonths(yms: readonly YearMonth[]) {
+  const key = yms.join(',');
+  return useLiveQuery(() => Promise.all(yms.map((ym) => listBudgets(ym))), [key]);
 }

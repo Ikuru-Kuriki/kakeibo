@@ -5,12 +5,14 @@ import BudgetPage from './pages/BudgetPage';
 import HistoryPage from './pages/HistoryPage';
 import SettingsPage from './pages/SettingsPage';
 import RecurringPage from './pages/RecurringPage';
+import TrendsPage from './pages/TrendsPage';
 import { usePendingRecurring } from './hooks/useData';
 import BackupStatus from './components/BackupStatus';
 
 const NAV_ITEMS = [
   { to: '/record', label: '今月の記録' },
   { to: '/summary', label: '月次サマリー' },
+  { to: '/trends', label: '推移' },
   { to: '/budget', label: '予算設定' },
   { to: '/history', label: '履歴' },
   { to: '/recurring', label: '固定費' },
@@ -63,6 +65,7 @@ export default function App() {
           <Route path="/budget/:ym" element={<BudgetPage />} />
           <Route path="/history" element={<HistoryPage />} />
           <Route path="/history/:ym" element={<HistoryPage />} />
+          <Route path="/trends" element={<TrendsPage />} />
           <Route path="/recurring" element={<RecurringPage />} />
           <Route path="/settings" element={<SettingsPage />} />
           <Route path="*" element={<Navigate to="/record" replace />} />

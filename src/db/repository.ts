@@ -271,3 +271,9 @@ export async function skipRecurring(ruleId: Id, month: YearMonth): Promise<void>
   if (rule.skippedMonths.includes(month)) return;
   await db.recurring.update(ruleId, { skippedMonths: [...rule.skippedMonths, month], updatedAt: now() });
 }
+
+/** 最も古い取引の日付（取引がなければ null） */
+export async function earliestTransactionDate(): Promise<string | null> {
+  const first = await db.transactions.orderBy('date').filter(alive).first();
+  return first?.date ?? null;
+}
