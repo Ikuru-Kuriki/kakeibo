@@ -9,7 +9,7 @@ import BackupStatus from './components/BackupStatus';
 const NAV_ITEMS = [
   { to: '/record', label: '今月の記録' },
   { to: '/summary', label: '月次サマリー' },
-  { to: '/budget', label: '来月の予算' },
+  { to: '/budget', label: '予算設定' },
   { to: '/history', label: '履歴' },
   { to: '/settings', label: '設定' },
 ] as const;
@@ -46,6 +46,7 @@ export default function App() {
           <Route path="/summary" element={<SummaryPage />} />
           <Route path="/summary/:ym" element={<SummaryPage />} />
           <Route path="/budget" element={<BudgetPage />} />
+          <Route path="/budget/:ym" element={<BudgetPage />} />
           <Route path="/history" element={<HistoryPage />} />
           <Route path="/history/:ym" element={<HistoryPage />} />
           <Route path="/settings" element={<SettingsPage />} />

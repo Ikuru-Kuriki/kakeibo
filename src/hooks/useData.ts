@@ -24,3 +24,9 @@ export function useTransactions(ym: YearMonth) {
 export function useBudgets(ym: YearMonth) {
   return useLiveQuery(() => listBudgets(ym), [ym]);
 }
+
+/** 複数月の取引をまとめて購読する（月の順に配列で返す） */
+export function useTransactionsForMonths(yms: readonly YearMonth[]) {
+  const key = yms.join(',');
+  return useLiveQuery(() => Promise.all(yms.map((ym) => listTransactionsInPeriod(ym))), [key]);
+}
