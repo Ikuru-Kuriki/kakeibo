@@ -4,6 +4,7 @@ import SummaryPage from './pages/SummaryPage';
 import BudgetPage from './pages/BudgetPage';
 import HistoryPage from './pages/HistoryPage';
 import SettingsPage from './pages/SettingsPage';
+import BackupStatus from './components/BackupStatus';
 
 const NAV_ITEMS = [
   { to: '/record', label: '今月の記録' },
@@ -16,7 +17,7 @@ const NAV_ITEMS = [
 export default function App() {
   return (
     <div className="flex min-h-screen">
-      <nav className="w-52 shrink-0 border-r border-slate-200 bg-white p-4">
+      <nav className="flex w-52 shrink-0 flex-col border-r border-slate-200 bg-white p-4">
         <h1 className="mb-6 px-2 text-lg font-bold">家計簿</h1>
         <ul className="space-y-1">
           {NAV_ITEMS.map((item) => (
@@ -34,6 +35,9 @@ export default function App() {
             </li>
           ))}
         </ul>
+        <div className="sticky bottom-4 mt-auto pt-6">
+          <BackupStatus />
+        </div>
       </nav>
       <main className="flex-1 p-8">
         <Routes>

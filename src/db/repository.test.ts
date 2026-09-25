@@ -107,3 +107,43 @@ describe('バックアップ', () => {
     expect(() => parseBackup(JSON.stringify({ format: 'kakeibo-backup', schemaVersion: 99, data: { transactions: [], categories: [], budgets: [] } }))).toThrow();
   });
 });
+
+describe('DB v2 マイグレーション', () => {
+  it('初期状態のままの既定カテゴリだけ色を塗り替える', async () => {
+    const { default: Dexie } = await import('dexie');
+    const { KakeiboDB } = await import('./db');
+    const name = 'migration-test';
+    await Dexie.delete(name);
+    const v1 = new Dexie(name);
+    v1.version(1).stores({ categories: 'id, order, updatedAt' });
+    const base = { createdAt: '', updatedAt: '', deletedAt: null, type: 'expense', archived: false };
+    await v1.table('categories').bulkAdd([
+      { ...base, id: '1', name: '食費', color: '#ef4444', order: 0 },
+      { ...base, id: '2', name: '日用品', color: '#123456', order: 1 },
+    ]);
+    v1.close();
+
+    const v2 = new KakeiboDB(name);
+    const rows = await v2.categories.orderBy('order').toArray();
+    expect(rows.map((c) => c.color)).toEqual(['#2a78d6', '#123456']);
+    v2.close();
+    await Dexie.delete(name);
+  });
+
+  it('v1 のバックアップも同じ変換をして読み込む', () => {
+    const meta = { createdAt: '', updatedAt: '', deletedAt: null };
+    const json = JSON.stringify({
+      format: 'kakeibo-backup',
+      schemaVersion: 1,
+      exportedAt: '',
+      data: {
+        transactions: [],
+        budgets: [],
+        categories: [{ ...meta, id: '1', name: '食費', type: 'expense', color: '#ef4444', order: 0, archived: false }],
+      },
+    });
+    const backup = parseBackup(json);
+    expect(backup.schemaVersion).toBe(2);
+    expect(backup.data.categories[0]!.color).toBe('#2a78d6');
+  });
+});

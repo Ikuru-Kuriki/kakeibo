@@ -102,3 +102,17 @@ export function averageExpenseByCategory(
   }
   return new Map([...totals].map(([id, sum]) => [id, Math.round(sum / months)]));
 }
+
+export const OTHER_ID = '__other__';
+
+/**
+ * 円グラフ用に上位 n 件を残し、残りを「その他」（categoryId = OTHER_ID）にまとめる。
+ * 円グラフは区分が多いと読めなくなるため、区分数を n + 1 以下に抑える。
+ */
+export function foldTopN(totals: readonly CategoryTotal[], n: number): CategoryTotal[] {
+  const sorted = [...totals].filter((t) => t.amount > 0).sort((a, b) => b.amount - a.amount);
+  // 1 件だけ畳むなら畳まずにそのまま出す
+  if (sorted.length <= n + 1) return sorted;
+  const rest = sorted.slice(n).reduce((sum, t) => sum + t.amount, 0);
+  return [...sorted.slice(0, n), { categoryId: OTHER_ID, amount: rest }];
+}

@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { averageExpenseByCategory, compareBudget, summarize } from './aggregate';
+import { OTHER_ID, averageExpenseByCategory, compareBudget, foldTopN, summarize } from './aggregate';
 import type { Budget, Category, EntryType, Transaction } from './types';
 
 const meta = { createdAt: '', updatedAt: '', deletedAt: null };
@@ -72,5 +72,15 @@ describe('averageExpenseByCategory', () => {
   it('月数で割った平均（実績のない月も分母に含む）', () => {
     const avg = averageExpenseByCategory([[tx('expense', 'food', 3000)], [tx('expense', 'food', 1000)], []]);
     expect(avg.get('food')).toBe(1333);
+  });
+});
+
+describe('foldTopN', () => {
+  const t = (categoryId: string, amount: number) => ({ categoryId, amount });
+  it('上位 n 件を残して残りを「その他」にまとめる', () => {
+    expect(foldTopN([t('a', 1), t('b', 5), t('c', 3), t('d', 2)], 2)).toEqual([t('b', 5), t('c', 3), t(OTHER_ID, 3)]);
+  });
+  it('1 件だけ余る場合はまとめない。0 円は除外する', () => {
+    expect(foldTopN([t('a', 1), t('b', 5), t('c', 3), t('z', 0)], 2)).toEqual([t('b', 5), t('c', 3), t('a', 1)]);
   });
 });

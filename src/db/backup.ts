@@ -1,5 +1,6 @@
 import type { Budget, Category, Transaction } from '../domain/types';
 import { db, type SettingsRow } from './db';
+import { V1_DEFAULT_COLOR_MIGRATION } from './defaults';
 
 /**
  * JSON バックアップ（エクスポート／インポート）。
@@ -9,7 +10,7 @@ import { db, type SettingsRow } from './db';
 
 export const BACKUP_FORMAT = 'kakeibo-backup';
 /** DB スキーマを変えたら上げ、migrateBackup に変換を追加する */
-export const SCHEMA_VERSION = 1;
+export const SCHEMA_VERSION = 2;
 
 export interface BackupData {
   format: typeof BACKUP_FORMAT;
@@ -55,7 +56,14 @@ function migrateBackup(backup: BackupData): BackupData {
   if (backup.schemaVersion > SCHEMA_VERSION) {
     throw new Error('このバックアップは新しいバージョンのアプリで作成されています');
   }
-  // 例: if (backup.schemaVersion < 2) { ...変換...; backup = { ...backup, schemaVersion: 2 } }
+  if (backup.schemaVersion < 2) {
+    // v2: 既定カテゴリの色変更（DB の version(2) と同じ変換）
+    const categories = backup.data.categories.map((c) => {
+      const m = V1_DEFAULT_COLOR_MIGRATION.find((x) => x.name === c.name && x.from === c.color);
+      return m ? { ...c, color: m.to } : c;
+    });
+    backup = { ...backup, schemaVersion: 2, data: { ...backup.data, categories } };
+  }
   return backup;
 }
 

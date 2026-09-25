@@ -62,11 +62,14 @@ export interface AppSettings {
   monthStartDay: number;
   /** 翌月予算が未設定のとき、前月予算を初期値として提示するか */
   carryOverBudget: boolean;
+  /** 最後にバックアップをエクスポートした日時。未実施なら null */
+  lastBackupAt: Timestamp | null;
 }
 
 export const DEFAULT_SETTINGS: AppSettings = {
   monthStartDay: 1,
   carryOverBudget: true,
+  lastBackupAt: null,
 };
 
 /** 入力用（メタデータはリポジトリ層で付与する） */
