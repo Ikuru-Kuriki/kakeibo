@@ -5,11 +5,12 @@ import type { TransactionInput, YearMonth } from '../domain/types';
 import { addTransaction } from '../db/repository';
 import { useCategories, useSettings, useTransactions } from '../hooks/useData';
 import MonthTotals from './MonthTotals';
+import PendingRecurring from './PendingRecurring';
 import TransactionForm from './TransactionForm';
 import TransactionList from './TransactionList';
 
 /** 1か月分の入力フォーム・合計・取引一覧。今月の記録画面と履歴画面で使う */
-export default function MonthRecord({ ym }: { ym: YearMonth }) {
+export default function MonthRecord({ ym, showPending = false }: { ym: YearMonth; showPending?: boolean }) {
   const { monthStartDay } = useSettings();
   const categories = useCategories({ includeArchived: true });
   const transactions = useTransactions(ym);
@@ -24,6 +25,7 @@ export default function MonthRecord({ ym }: { ym: YearMonth }) {
 
   return (
     <div className="space-y-6">
+      {showPending && <PendingRecurring />}
       <section className="rounded-lg border border-slate-200 bg-white p-5">
         {categories && (
           <TransactionForm

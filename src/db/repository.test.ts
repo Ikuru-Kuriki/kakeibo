@@ -147,7 +147,8 @@ describe('DB v2 マイグレーション', () => {
       },
     });
     const backup = parseBackup(json);
-    expect(backup.schemaVersion).toBe(2);
+    expect(backup.schemaVersion).toBe(3);
+    expect(backup.data.recurring).toEqual([]);
     expect(backup.data.categories[0]!.color).toBe('#2a78d6');
   });
 });
@@ -176,5 +177,60 @@ describe('カテゴリ', () => {
     expect((await listCategories({ includeArchived: true })).some((c) => c.id === food.id)).toBe(true);
     await archiveCategory(food.id, false);
     expect((await listCategories()).some((c) => c.id === food.id)).toBe(true);
+  });
+});
+
+describe('固定費', () => {
+  async function rentRule(startMonth = '2026-08') {
+    const { addRecurring } = await import('./repository');
+    const rent = (await listCategories()).find((c) => c.name === '住居')!;
+    return addRecurring({
+      name: '家賃',
+      type: 'expense',
+      categoryId: rent.id,
+      amount: 85000,
+      dayOfMonth: 31,
+      startMonth,
+      endMonth: null,
+    });
+  }
+
+  it('確認待ちを確定・スキップでき、確定した取引を削除しても再び確認待ちにならない', async () => {
+    const { listPendingRecurring, confirmRecurring, skipRecurring } = await import('./repository');
+    const rule = await rentRule();
+    expect((await listPendingRecurring('2026-09')).map((p) => [p.month, p.date])).toEqual([
+      ['2026-08', '2026-08-31'],
+      ['2026-09', '2026-09-30'],
+    ]);
+
+    const tx = await confirmRecurring(rule.id, '2026-08', { amount: 86000 });
+    expect(tx).toMatchObject({ amount: 86000, memo: '家賃', date: '2026-08-31', recurringMonth: '2026-08' });
+    await expect(confirmRecurring(rule.id, '2026-08')).rejects.toThrow('対応済み');
+
+    await skipRecurring(rule.id, '2026-09');
+    expect(await listPendingRecurring('2026-09')).toEqual([]);
+
+    await deleteTransaction(tx.id);
+    expect(await listPendingRecurring('2026-09')).toEqual([]);
+    expect(await listPendingRecurring('2026-10')).toHaveLength(1);
+  });
+
+  it('不正な入力を拒否し、削除すると確認待ちから消える', async () => {
+    const { addRecurring, deleteRecurring, listPendingRecurring } = await import('./repository');
+    const rule = await rentRule();
+    await expect(addRecurring({ ...rule, dayOfMonth: 32 })).rejects.toThrow();
+    await expect(addRecurring({ ...rule, endMonth: '2026-01' })).rejects.toThrow('終了月');
+    await deleteRecurring(rule.id);
+    expect(await listPendingRecurring('2026-09')).toEqual([]);
+  });
+
+  it('バックアップに含まれ、復元できる', async () => {
+    const { listRecurring } = await import('./repository');
+    await rentRule();
+    const json = JSON.stringify(await exportBackup());
+    await db.delete();
+    await db.open();
+    await importBackup(parseBackup(json));
+    expect((await listRecurring()).map((r) => r.name)).toEqual(['家賃']);
   });
 });

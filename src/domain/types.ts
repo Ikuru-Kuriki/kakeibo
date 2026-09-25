@@ -34,7 +34,34 @@ export interface Transaction extends SyncMeta {
   type: EntryType;
   categoryId: Id;
   memo: string;
+  /** 固定費から確定した取引なら、その固定費の ID */
+  recurringId?: Id | null;
+  /** 固定費の何月分か */
+  recurringMonth?: YearMonth | null;
 }
+
+/** 固定費（毎月の定期的な取引）のルール */
+export interface RecurringRule extends SyncMeta {
+  /** 名前（確定した取引のメモになる） */
+  name: string;
+  type: EntryType;
+  categoryId: Id;
+  /** 目安の金額（確定時に変更できる） */
+  amount: number;
+  /** 毎月の日（1〜31。その月にない日は月末） */
+  dayOfMonth: number;
+  /** 開始月 */
+  startMonth: YearMonth;
+  /** 終了月（なければ null） */
+  endMonth: YearMonth | null;
+  /** 「今月はなし」にした月 */
+  skippedMonths: YearMonth[];
+}
+
+export type RecurringRuleInput = Pick<
+  RecurringRule,
+  'name' | 'type' | 'categoryId' | 'amount' | 'dayOfMonth' | 'startMonth' | 'endMonth'
+>;
 
 export interface Category extends SyncMeta {
   name: string;

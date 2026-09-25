@@ -9,7 +9,7 @@ export default function RecordPage() {
   return (
     <>
       <PageHeader title={`今月の記録（${formatYearMonthJa(ym)}）`} />
-      <MonthRecord ym={ym} />
+      <MonthRecord ym={ym} showPending />
     </>
   );
 }

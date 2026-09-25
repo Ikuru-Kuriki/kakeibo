@@ -95,3 +95,11 @@ export function lastDayOfPeriod(ym: YearMonth, monthStartDay = 1): ISODate {
 export function defaultEntryDate(ym: YearMonth, monthStartDay = 1, todayDate: ISODate = today()): ISODate {
   return periodOf(todayDate, monthStartDay) === ym ? todayDate : lastDayOfPeriod(ym, monthStartDay);
 }
+
+const WEEKDAYS_JA = ['日', '月', '火', '水', '木', '金', '土'] as const;
+
+/** 表示用: "2026-09-25" → "9/25（金）" */
+export function formatMonthDayJa(date: ISODate): string {
+  const [y, m, d] = date.split('-').map(Number) as [number, number, number];
+  return `${m}/${d}（${WEEKDAYS_JA[new Date(y, m - 1, d).getDay()]}）`;
+}

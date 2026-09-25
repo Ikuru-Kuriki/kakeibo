@@ -4,6 +4,8 @@ import SummaryPage from './pages/SummaryPage';
 import BudgetPage from './pages/BudgetPage';
 import HistoryPage from './pages/HistoryPage';
 import SettingsPage from './pages/SettingsPage';
+import RecurringPage from './pages/RecurringPage';
+import { usePendingRecurring } from './hooks/useData';
 import BackupStatus from './components/BackupStatus';
 
 const NAV_ITEMS = [
@@ -11,10 +13,12 @@ const NAV_ITEMS = [
   { to: '/summary', label: '月次サマリー' },
   { to: '/budget', label: '予算設定' },
   { to: '/history', label: '履歴' },
+  { to: '/recurring', label: '固定費' },
   { to: '/settings', label: '設定' },
 ] as const;
 
 export default function App() {
+  const pendingCount = usePendingRecurring()?.length ?? 0;
   return (
     <div className="flex min-h-screen">
       <nav className="flex w-52 shrink-0 flex-col border-r border-slate-200 bg-white p-4">
@@ -30,7 +34,17 @@ export default function App() {
                   }`
                 }
               >
-                {item.label}
+                <span className="flex items-center justify-between">
+                  {item.label}
+                  {item.to === '/recurring' && pendingCount > 0 && (
+                    <span
+                      className="rounded-full bg-amber-500 px-2 text-xs font-medium text-white"
+                      aria-label={`確認待ち${pendingCount}件`}
+                    >
+                      {pendingCount}
+                    </span>
+                  )}
+                </span>
               </NavLink>
             </li>
           ))}
@@ -49,6 +63,7 @@ export default function App() {
           <Route path="/budget/:ym" element={<BudgetPage />} />
           <Route path="/history" element={<HistoryPage />} />
           <Route path="/history/:ym" element={<HistoryPage />} />
+          <Route path="/recurring" element={<RecurringPage />} />
           <Route path="/settings" element={<SettingsPage />} />
           <Route path="*" element={<Navigate to="/record" replace />} />
         </Routes>

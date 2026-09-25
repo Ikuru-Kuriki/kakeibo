@@ -1,7 +1,15 @@
 import { useLiveQuery } from 'dexie-react-hooks';
 import type { YearMonth } from '../domain/types';
 import { DEFAULT_SETTINGS } from '../domain/types';
-import { getSettings, listBudgets, listCategories, listTransactionsInPeriod } from '../db/repository';
+import {
+  getSettings,
+  listBudgets,
+  listCategories,
+  listPendingRecurring,
+  listRecurring,
+  listTransactionsInPeriod,
+} from '../db/repository';
+import { currentPeriod } from '../domain/period';
 
 /**
  * DB の内容をリアクティブに購読するフック群。DB が更新されると自動で再描画される。
@@ -29,4 +37,15 @@ export function useBudgets(ym: YearMonth) {
 export function useTransactionsForMonths(yms: readonly YearMonth[]) {
   const key = yms.join(',');
   return useLiveQuery(() => Promise.all(yms.map((ym) => listTransactionsInPeriod(ym))), [key]);
+}
+
+export function useRecurring() {
+  return useLiveQuery(listRecurring, []);
+}
+
+/** 今月までの確認待ちの固定費 */
+export function usePendingRecurring() {
+  const { monthStartDay } = useSettings();
+  const current = currentPeriod(monthStartDay);
+  return useLiveQuery(() => listPendingRecurring(current), [current]);
 }

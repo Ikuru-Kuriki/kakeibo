@@ -4,6 +4,8 @@ import type {
   Category,
   CategoryInput,
   Id,
+  RecurringRule,
+  RecurringRuleInput,
   Transaction,
   TransactionInput,
   YearMonth,
@@ -11,6 +13,7 @@ import type {
 import { DEFAULT_SETTINGS } from '../domain/types';
 import { isValidAmount } from '../domain/money';
 import { isValidISODate, periodRange } from '../domain/period';
+import { occurrenceDate, occurrenceKey, pendingOccurrences, type PendingOccurrence } from '../domain/recurring';
 import { db } from './db';
 import { newMeta, now } from './meta';
 
@@ -177,4 +180,94 @@ export async function copyBudgets(from: YearMonth, to: YearMonth): Promise<numbe
   const targets = source.filter((b) => !existing.has(b.categoryId));
   for (const b of targets) await setBudget(to, b.categoryId, b.amount);
   return targets.length;
+}
+
+// ---------- Recurring（固定費） ----------
+
+function validateRecurring(input: RecurringRuleInput): void {
+  if (!input.name.trim()) throw new Error('名前を入力してください');
+  if (!isValidAmount(input.amount)) throw new Error('金額は1円以上の整数で入力してください');
+  if (!Number.isInteger(input.dayOfMonth) || input.dayOfMonth < 1 || input.dayOfMonth > 31) {
+    throw new Error('日は1〜31で入力してください');
+  }
+  if (!/^\d{4}-\d{2}$/.test(input.startMonth)) throw new Error('開始月を入力してください');
+  if (input.endMonth !== null && input.endMonth < input.startMonth) throw new Error('終了月は開始月以降にしてください');
+  if (!input.categoryId) throw new Error('カテゴリを選択してください');
+}
+
+export async function listRecurring(): Promise<RecurringRule[]> {
+  const rows = await db.recurring.filter(alive).toArray();
+  return rows.sort((a, b) => a.dayOfMonth - b.dayOfMonth || a.name.localeCompare(b.name));
+}
+
+export async function addRecurring(input: RecurringRuleInput): Promise<RecurringRule> {
+  validateRecurring(input);
+  const row: RecurringRule = { ...newMeta(), ...input, name: input.name.trim(), skippedMonths: [] };
+  await db.recurring.add(row);
+  return row;
+}
+
+export async function updateRecurring(id: Id, patch: Partial<RecurringRuleInput>): Promise<void> {
+  const current = await db.recurring.get(id);
+  if (!current || !alive(current)) throw new Error('固定費が見つかりません');
+  const next = { ...current, ...patch };
+  validateRecurring(next);
+  await db.recurring.put({ ...next, name: next.name.trim(), updatedAt: now() });
+}
+
+/** 固定費を削除する。確定済みの取引はそのまま残る */
+export async function deleteRecurring(id: Id): Promise<void> {
+  const t = now();
+  await db.recurring.update(id, { deletedAt: t, updatedAt: t });
+}
+
+/** 確認待ちの固定費。確定済みの取引は、後で削除したものも「対応済み」とみなす */
+export async function listPendingRecurring(current: YearMonth): Promise<PendingOccurrence[]> {
+  const rules = await listRecurring();
+  if (rules.length === 0) return [];
+  const confirmed = await db.transactions
+    .where('recurringId')
+    .anyOf(rules.map((r) => r.id))
+    .toArray();
+  const handled = new Set(
+    confirmed.filter((t) => t.recurringMonth).map((t) => occurrenceKey(t.recurringId!, t.recurringMonth!)),
+  );
+  return pendingOccurrences(rules, handled, current);
+}
+
+/** 確認待ちを確定して取引にする（金額・日付は変更可） */
+export async function confirmRecurring(
+  ruleId: Id,
+  month: YearMonth,
+  override: { amount?: number; date?: string } = {},
+): Promise<Transaction> {
+  return db.transaction('rw', db.transactions, db.recurring, async () => {
+    const rule = await db.recurring.get(ruleId);
+    if (!rule || !alive(rule)) throw new Error('固定費が見つかりません');
+    const done = await db.transactions
+      .where('recurringId')
+      .equals(ruleId)
+      .filter((t) => t.recurringMonth === month)
+      .count();
+    if (done > 0 || rule.skippedMonths.includes(month)) throw new Error('この月の分は対応済みです');
+    const input: TransactionInput = {
+      date: override.date ?? occurrenceDate(month, rule.dayOfMonth),
+      amount: override.amount ?? rule.amount,
+      type: rule.type,
+      categoryId: rule.categoryId,
+      memo: rule.name,
+    };
+    validateTransaction(input);
+    const row: Transaction = { ...newMeta(), ...input, recurringId: ruleId, recurringMonth: month };
+    await db.transactions.add(row);
+    return row;
+  });
+}
+
+/** 確認待ちを「この月はなし」にする */
+export async function skipRecurring(ruleId: Id, month: YearMonth): Promise<void> {
+  const rule = await db.recurring.get(ruleId);
+  if (!rule) return;
+  if (rule.skippedMonths.includes(month)) return;
+  await db.recurring.update(ruleId, { skippedMonths: [...rule.skippedMonths, month], updatedAt: now() });
 }

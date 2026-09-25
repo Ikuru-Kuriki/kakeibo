@@ -1,5 +1,5 @@
 import Dexie, { type EntityTable } from 'dexie';
-import type { AppSettings, Budget, Category, Transaction } from '../domain/types';
+import type { AppSettings, Budget, Category, RecurringRule, Transaction } from '../domain/types';
 import { DEFAULT_CATEGORIES, V1_DEFAULT_COLOR_MIGRATION } from './defaults';
 import { newMeta } from './meta';
 
@@ -17,6 +17,7 @@ export class KakeiboDB extends Dexie {
   categories!: EntityTable<Category, 'id'>;
   budgets!: EntityTable<Budget, 'id'>;
   settings!: EntityTable<SettingsRow, 'key'>;
+  recurring!: EntityTable<RecurringRule, 'id'>;
 
   constructor(name = 'kakeibo') {
     super(name);
@@ -42,6 +43,12 @@ export class KakeiboDB extends Dexie {
             }
           });
       });
+
+    // v3: 固定費（recurring）を追加。取引に固定費の ID の索引を追加
+    this.version(3).stores({
+      transactions: 'id, date, categoryId, updatedAt, recurringId',
+      recurring: 'id, updatedAt',
+    });
 
     this.on('populate', async (tx) => {
       await tx.table('categories').bulkAdd(

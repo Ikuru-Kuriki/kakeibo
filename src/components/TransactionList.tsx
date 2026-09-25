@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { formatYen } from '../domain/money';
+import { formatMonthDayJa } from '../domain/period';
 import type { Category, Id, Transaction, TransactionInput } from '../domain/types';
 import { deleteTransaction, updateTransaction } from '../db/repository';
 import TransactionForm from './TransactionForm';
@@ -10,12 +11,7 @@ interface Props {
   categories: readonly Category[];
 }
 
-const weekdays = ['日', '月', '火', '水', '木', '金', '土'];
-
-function formatDate(date: string): string {
-  const [y, m, d] = date.split('-').map(Number) as [number, number, number];
-  return `${m}/${d}（${weekdays[new Date(y, m - 1, d).getDay()]}）`;
-}
+const formatDate = formatMonthDayJa;
 
 export default function TransactionList({ transactions, categories }: Props) {
   const [editingId, setEditingId] = useState<Id | null>(null);
@@ -83,7 +79,12 @@ export default function TransactionList({ transactions, categories }: Props) {
                     {category?.name ?? '（不明）'}
                   </span>
                 </td>
-                <td className="px-4 py-2 text-slate-600">{t.memo}</td>
+                <td className="px-4 py-2 text-slate-600">
+                  {t.recurringId && (
+                    <span className="mr-2 rounded bg-slate-100 px-1.5 py-0.5 text-xs text-slate-500">固定</span>
+                  )}
+                  {t.memo}
+                </td>
                 <td
                   className={`px-4 py-2 text-right font-medium tabular-nums ${
                     t.type === 'income' ? 'text-emerald-700' : 'text-slate-800'
