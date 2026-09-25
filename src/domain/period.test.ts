@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { addMonths, defaultEntryDate, formatMonthDayJa, isValidISODate, lastDayOfPeriod, periodOf, periodRange } from './period';
+import { addDays, addMonths, defaultEntryDate, formatDateJa, formatMonthDayJa, isValidISODate, lastDayOfPeriod, periodOf, periodRange } from './period';
 
 describe('addMonths', () => {
   it('年をまたいで加減算できる', () => {
@@ -55,5 +55,15 @@ describe('formatMonthDayJa', () => {
   it('月/日（曜日）', () => {
     expect(formatMonthDayJa('2026-09-25')).toBe('9/25（金）');
     expect(formatMonthDayJa('2026-09-27')).toBe('9/27（日）');
+  });
+});
+
+describe('addDays / formatDateJa', () => {
+  it('月・年をまたいで日付をずらす', () => {
+    expect(addDays('2026-09-30', 1)).toBe('2026-10-01');
+    expect(addDays('2026-01-01', -1)).toBe('2025-12-31');
+  });
+  it('年/月/日（曜日）', () => {
+    expect(formatDateJa('2026-09-25')).toBe('2026/9/25（金）');
   });
 });

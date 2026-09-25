@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useRef, useState, type FormEvent } from 'react';
 import { selectableCategories } from '../domain/categories';
 import { parseAmount } from '../domain/money';
+import DateField from './DateField';
 import { isValidISODate, today } from '../domain/period';
 import type { Category, EntryType, TransactionInput } from '../domain/types';
 
@@ -104,16 +105,10 @@ export default function TransactionForm({
             ))}
           </div>
         </div>
-        <label className="flex flex-col gap-1">
+        <div className="flex flex-col gap-1">
           <span className="text-xs text-slate-500">日付</span>
-          <input
-            type="date"
-            required
-            value={date}
-            onChange={(e) => setDate(e.target.value)}
-            className={inputClass}
-          />
-        </label>
+          <DateField label="日付" value={date} onChange={setDate} />
+        </div>
         <label className="flex flex-col gap-1">
           <span className="text-xs text-slate-500">金額（円）</span>
           <input

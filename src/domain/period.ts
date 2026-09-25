@@ -103,3 +103,14 @@ export function formatMonthDayJa(date: ISODate): string {
   const [y, m, d] = date.split('-').map(Number) as [number, number, number];
   return `${m}/${d}（${WEEKDAYS_JA[new Date(y, m - 1, d).getDay()]}）`;
 }
+
+/** 日付を n 日ずらす */
+export function addDays(date: ISODate, n: number): ISODate {
+  const [y, m, d] = date.split('-').map(Number) as [number, number, number];
+  return toISODate(new Date(y, m - 1, d + n));
+}
+
+/** 表示用: "2026-09-25" → "2026/9/25（金）" */
+export function formatDateJa(date: ISODate): string {
+  return `${date.slice(0, 4)}/${formatMonthDayJa(date)}`;
+}

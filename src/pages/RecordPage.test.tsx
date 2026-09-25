@@ -1,5 +1,5 @@
 // @vitest-environment jsdom
-import { cleanup, render, screen, waitFor, within } from '@testing-library/react';
+import { cleanup, fireEvent, render, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { db } from '../db/db';
@@ -75,12 +75,30 @@ describe('今月の記録画面', () => {
 
   it('今月以外の日付で保存すると案内を表示する', async () => {
     const { user, form } = await setup();
-    const date = within(form).getByLabelText('日付');
-    await user.clear(date);
-    await user.type(date, `${addMonths(today().slice(0, 7), -1)}-15`);
+    // カレンダーで前月の日付を選んだのと同じ操作
+    fireEvent.change(within(form).getByLabelText('日付'), {
+      target: { value: `${addMonths(today().slice(0, 7), -1)}-15` },
+    });
     await user.type(within(form).getByLabelText('金額（円）'), '100');
     await user.click(within(form).getByRole('button', { name: '追加' }));
     expect(await screen.findByText(/の取引として保存しました/)).toBeTruthy();
     expect(screen.getByText('取引はまだありません')).toBeTruthy();
+  });
+});
+
+describe('日付の入力', () => {
+  it('曜日つきで表示し、‹ › で1日ずつ動かせる', async () => {
+    const { user, form } = await setup();
+    const t = today();
+    const [y, m, d] = t.split('-').map(Number) as [number, number, number];
+    const weekday = '日月火水木金土'[new Date(y, m - 1, d).getDay()];
+    expect(within(form).getByRole('button', { name: /^日付: / }).textContent).toBe(`${y}/${m}/${d}（${weekday}）`);
+
+    await user.click(within(form).getByRole('button', { name: '前の日' }));
+    const prev = new Date(y, m - 1, d - 1);
+    const expected = `${prev.getFullYear()}-${String(prev.getMonth() + 1).padStart(2, '0')}-${String(prev.getDate()).padStart(2, '0')}`;
+    expect(within(form).getByLabelText('日付')).toHaveProperty('value', expected);
+    await user.click(within(form).getByRole('button', { name: '次の日' }));
+    expect(within(form).getByLabelText('日付')).toHaveProperty('value', t);
   });
 });
