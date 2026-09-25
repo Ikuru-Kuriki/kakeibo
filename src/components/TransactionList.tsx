@@ -41,8 +41,8 @@ export default function TransactionList({ transactions, categories }: Props) {
 
   return (
     <div className="overflow-hidden rounded-lg border border-slate-200 bg-white">
-      <table className="w-full text-sm">
-        <thead className="bg-slate-50 text-left text-xs text-slate-500">
+      <table className="block w-full text-sm md:table">
+        <thead className="hidden bg-slate-50 text-left text-xs text-slate-500 md:table-header-group">
           <tr>
             <th className="w-28 px-4 py-2 font-medium">日付</th>
             <th className="w-56 px-4 py-2 font-medium">カテゴリ › 小分類</th>
@@ -51,12 +51,12 @@ export default function TransactionList({ transactions, categories }: Props) {
             <th className="w-32 px-4 py-2" />
           </tr>
         </thead>
-        <tbody className="divide-y divide-slate-100">
+        <tbody className="block divide-y divide-slate-100 md:table-row-group">
           {transactions.map((t) => {
             if (t.id === editingId) {
               return (
-                <tr key={t.id} className="bg-slate-50">
-                  <td colSpan={5} className="px-4 py-3">
+                <tr key={t.id} className="block bg-slate-50 md:table-row">
+                  <td colSpan={5} className="block px-4 py-3 md:table-cell">
                     <TransactionForm
                       categories={categories}
                       initial={t}
@@ -70,10 +70,15 @@ export default function TransactionList({ transactions, categories }: Props) {
             }
             const category = categoryById.get(t.categoryId);
             return (
-              <tr key={t.id} className="group hover:bg-slate-50">
-                <td className="px-4 py-2 tabular-nums text-slate-600">{formatDate(t.date)}</td>
-                <td className="px-4 py-2">
-                  <span className="inline-flex items-center gap-2">
+              <tr
+                key={t.id}
+                className="group grid grid-cols-[4.5rem_minmax(0,1fr)_auto] items-center gap-x-2 px-3 py-2 hover:bg-slate-50 md:table-row md:p-0"
+              >
+                <td className="text-xs tabular-nums text-slate-600 md:table-cell md:px-4 md:py-2 md:text-sm">
+                  {formatDate(t.date)}
+                </td>
+                <td className="min-w-0 md:table-cell md:px-4 md:py-2">
+                  <span className="inline-flex max-w-full flex-wrap items-center gap-x-2">
                     <span
                       className="inline-block size-2.5 rounded-full"
                       style={{ backgroundColor: category?.color ?? '#94a3b8' }}
@@ -85,22 +90,27 @@ export default function TransactionList({ transactions, categories }: Props) {
                     )}
                   </span>
                 </td>
-                <td className="px-4 py-2 text-slate-600">
+                <td
+                  className={`col-span-2 col-start-1 row-start-2 text-xs text-slate-500 md:table-cell md:px-4 md:py-2 md:text-sm md:text-slate-600 ${
+                    !t.memo && !t.recurringId ? 'hidden' : ''
+                  }`}
+                >
                   {t.recurringId && (
                     <span className="mr-2 rounded bg-slate-100 px-1.5 py-0.5 text-xs text-slate-500">固定</span>
                   )}
                   {t.memo}
                 </td>
                 <td
-                  className={`px-4 py-2 text-right font-medium tabular-nums ${
+                  className={`col-start-3 row-start-1 text-right font-medium tabular-nums md:table-cell md:px-4 md:py-2 ${
                     t.type === 'income' ? 'text-emerald-700' : 'text-slate-800'
                   }`}
                 >
                   {t.type === 'income' ? '+' : '−'}
                   {formatYen(t.amount)}
                 </td>
-                <td className="px-4 py-2 text-right">
-                  <span className="invisible space-x-1 group-focus-within:visible group-hover:visible">
+                <td className="col-start-3 row-start-2 text-right md:table-cell md:px-4 md:py-2">
+                  {/* スマホではマウスを乗せられないので常に表示 */}
+                  <span className="space-x-1 md:invisible md:group-focus-within:visible md:group-hover:visible">
                     <button
                       type="button"
                       onClick={() => setEditingId(t.id)}

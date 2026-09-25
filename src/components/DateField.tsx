@@ -8,7 +8,7 @@ interface Props {
   label: string;
 }
 
-const stepButton = 'px-2 text-slate-500 hover:bg-slate-100 hover:text-slate-800';
+const stepButton = 'px-3 text-slate-500 hover:bg-slate-100 hover:text-slate-800 md:px-2';
 
 /**
  * 日付の入力。ブラウザ標準の日付欄は、Chrome の日本語表示で曜日の欄が「()」と空になるため、
@@ -30,7 +30,7 @@ export default function DateField({ value, onChange, label }: Props) {
   const valid = isValidISODate(value);
 
   return (
-    <div className="relative inline-flex h-[38px] items-stretch overflow-hidden rounded-md border border-slate-300 bg-white text-sm focus-within:border-slate-500">
+    <div className="relative flex h-[42px] w-full items-stretch overflow-hidden rounded-md border border-slate-300 bg-white text-sm focus-within:border-slate-500 md:inline-flex md:h-[38px] md:w-auto">
       <button
         type="button"
         className={stepButton}
@@ -49,7 +49,7 @@ export default function DateField({ value, onChange, label }: Props) {
           if (e.key === 'ArrowRight') onChange(addDays(value, 1));
         }}
         aria-label={`${label}: ${valid ? formatDateJa(value) : '未入力'}（クリックでカレンダー、←→で1日ずつ）`}
-        className="min-w-36 px-2 text-left tabular-nums hover:bg-slate-50 focus:outline-none"
+        className="min-w-36 flex-1 px-2 text-center tabular-nums hover:bg-slate-50 focus:outline-none md:flex-none md:text-left"
       >
         {valid ? formatDateJa(value) : '日付を選ぶ'}
       </button>

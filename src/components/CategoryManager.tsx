@@ -17,7 +17,7 @@ const SWATCHES = [...CATEGORY_PALETTE, NEUTRAL_COLOR];
 const TYPE_LABELS: Record<EntryType, string> = { expense: '支出', income: '収入' };
 
 const smallButton =
-  'rounded px-2 py-1 text-xs text-slate-600 hover:bg-slate-200 disabled:cursor-not-allowed disabled:opacity-30';
+  'rounded px-2 py-1 text-xs whitespace-nowrap text-slate-600 hover:bg-slate-200 disabled:cursor-not-allowed disabled:opacity-30';
 
 function ColorPicker({ value, onChange, label }: { value: string; onChange: (c: string) => void; label: string }) {
   return (
@@ -90,7 +90,7 @@ function SubcategoryPanel({ category, subcategories }: { category: Category; sub
   }
 
   return (
-    <div className="mt-2 ml-8 rounded-md bg-slate-50 p-3 text-sm">
+    <div className="mt-2 rounded-md bg-slate-50 p-3 text-sm md:ml-8">
       {active.length === 0 && <p className="mb-2 text-xs text-slate-500">小分類はまだありません</p>}
       <ul className="space-y-1">
         {active.map((sc) => (
@@ -171,7 +171,7 @@ function CategoryRow({
 
   return (
     <li className="py-2">
-      <div className="flex items-center gap-3">
+      <div className="flex flex-wrap items-center gap-x-2 gap-y-1 md:flex-nowrap md:gap-3">
         <button
           type="button"
           aria-label={`${category.name}の色を変更`}
@@ -190,13 +190,13 @@ function CategoryRow({
             if (e.key === 'Enter') e.currentTarget.blur();
             if (e.key === 'Escape') setName(category.name);
           }}
-          className="w-48 rounded-md border border-transparent px-2 py-1 text-sm hover:border-slate-300 focus:border-slate-500 focus:outline-none"
+          className="min-w-0 basis-[calc(100%-2rem)] rounded-md border border-transparent px-2 py-1 text-sm hover:border-slate-300 focus:border-slate-500 focus:outline-none md:w-48 md:basis-auto"
         />
         <button
           type="button"
           aria-expanded={subOpen}
           onClick={() => setSubOpen((v) => !v)}
-          className="rounded px-2 py-1 text-xs text-slate-500 hover:bg-slate-100"
+          className="ml-6 rounded px-2 py-1 text-xs whitespace-nowrap text-slate-500 hover:bg-slate-100 md:ml-0"
         >
           小分類 {activeSubCount}件 {subOpen ? '▴' : '▾'}
         </button>
@@ -230,7 +230,7 @@ function CategoryRow({
       </div>
       {subOpen && <SubcategoryPanel category={category} subcategories={subcategories} />}
       {pickerOpen && (
-        <div className="mt-2 pl-8">
+        <div className="mt-2 md:pl-8">
           <ColorPicker
             label={`${category.name}の色`}
             value={category.color}

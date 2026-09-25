@@ -35,12 +35,15 @@ export default function BudgetComparison({ rows, categoryById }: Props) {
           予算
         </span>
       </div>
-      <ul className="space-y-3">
+      <ul className="space-y-4 md:space-y-3">
         {visible.map((r) => {
           const category = categoryById.get(r.categoryId);
           const over = r.remaining !== null && r.remaining < 0;
           return (
-            <li key={r.categoryId} className="grid grid-cols-[7rem_minmax(0,1fr)_13rem] items-center gap-4 text-sm">
+            <li
+              key={r.categoryId}
+              className="grid grid-cols-[minmax(0,1fr)_auto] items-center gap-x-4 gap-y-1 text-sm md:grid-cols-[7rem_minmax(0,1fr)_13rem]"
+            >
               <span className="inline-flex items-center gap-2 truncate text-slate-700">
                 <span
                   className="inline-block size-2.5 shrink-0 rounded-full"
@@ -49,7 +52,7 @@ export default function BudgetComparison({ rows, categoryById }: Props) {
                 />
                 {category?.name ?? '（不明）'}
               </span>
-              <div className="relative h-5" aria-hidden>
+              <div className="relative col-span-2 row-start-2 h-5 md:col-span-1 md:col-start-2 md:row-start-1" aria-hidden>
                 <div className="absolute inset-x-0 top-1/2 h-px bg-slate-200" />
                 <div
                   className="absolute top-1/2 h-3 -translate-y-1/2 rounded-r"
@@ -62,7 +65,7 @@ export default function BudgetComparison({ rows, categoryById }: Props) {
                   />
                 )}
               </div>
-              <div className="text-right tabular-nums">
+              <div className="col-start-2 row-start-1 text-right tabular-nums md:col-start-3">
                 <div className="text-slate-800">
                   {formatYen(r.actual)}
                   {r.planned !== null && <span className="text-slate-500"> / {formatYen(r.planned)}</span>}

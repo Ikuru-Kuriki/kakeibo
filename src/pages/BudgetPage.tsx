@@ -107,9 +107,9 @@ export default function BudgetPage() {
         </div>
         {message && <p className="text-sm text-emerald-700">{message}</p>}
 
-        <div className="overflow-x-auto rounded-lg border border-slate-200 bg-white">
-          <table className="w-full text-sm">
-            <thead className="bg-slate-50 text-right text-xs text-slate-500">
+        <div className="rounded-lg border border-slate-200 bg-white md:overflow-x-auto">
+          <table className="block w-full text-sm md:table">
+            <thead className="hidden bg-slate-50 text-right text-xs text-slate-500 md:table-header-group">
               <tr>
                 <th className="px-4 py-2 text-left font-medium">カテゴリ</th>
                 <th className="px-4 py-2 font-medium">{monthLabel(ref.prev)}の予算</th>
@@ -123,15 +123,18 @@ export default function BudgetPage() {
                 <th className="bg-slate-100 px-4 py-2 font-bold text-slate-700">{monthLabel(target)}の予算</th>
               </tr>
             </thead>
-            <tbody className="divide-y divide-slate-100 text-right">
+            <tbody className="block divide-y divide-slate-100 text-right md:table-row-group">
               {rows.map((c) => {
                 const use = (n: number) => void setBudget(target, c.id, n);
                 const prevActual = data.prevActual.get(c.id);
                 const prevBudget = prevMap.get(c.id);
                 const over = prevBudget !== undefined && (prevActual ?? 0) > prevBudget;
                 return (
-                  <tr key={c.id}>
-                    <td className="px-4 py-2 text-left">
+                  <tr
+                    key={c.id}
+                    className="grid grid-cols-2 items-center gap-x-3 gap-y-1 px-3 py-3 md:table-row md:p-0"
+                  >
+                    <td className="col-start-1 row-start-1 text-left font-medium md:table-cell md:px-4 md:py-2 md:font-normal">
                       <span className="inline-flex items-center gap-2">
                         <span
                           className="inline-block size-2.5 rounded-full"
@@ -141,10 +144,12 @@ export default function BudgetPage() {
                         {c.name}
                       </span>
                     </td>
-                    <td className="px-4 py-2">
+                    <td className="flex items-center justify-between gap-1 text-xs md:table-cell md:px-4 md:py-2 md:text-sm">
+                      <span className="text-slate-400 md:hidden">{`${monthLabel(ref.prev)}の予算`}</span>
                       <RefValue amount={prevBudget} onUse={use} title={`${monthLabel(ref.prev)}の予算`} />
                     </td>
-                    <td className="px-4 py-2">
+                    <td className="flex items-center justify-between gap-1 text-xs md:table-cell md:px-4 md:py-2 md:text-sm">
+                      <span className="text-slate-400 md:hidden">{`${monthLabel(ref.prev)}の実績${ref.prevInProgress ? '（途中）' : ''}`}</span>
                       <span className="inline-flex items-center gap-1">
                         {over && (
                           <span className="text-xs text-[#d03b3b]" title="予算超過">
@@ -154,17 +159,19 @@ export default function BudgetPage() {
                         <RefValue amount={prevActual} onUse={use} title={`${monthLabel(ref.prev)}の実績`} />
                       </span>
                     </td>
-                    <td className="px-4 py-2">
+                    <td className="flex items-center justify-between gap-1 text-xs md:table-cell md:px-4 md:py-2 md:text-sm">
+                      <span className="text-slate-400 md:hidden">{`${monthLabel(ref.before)}の実績`}</span>
                       <RefValue
                         amount={data.beforeActual.get(c.id)}
                         onUse={use}
                         title={`${monthLabel(ref.before)}の実績`}
                       />
                     </td>
-                    <td className="px-4 py-2">
+                    <td className="flex items-center justify-between gap-1 text-xs md:table-cell md:px-4 md:py-2 md:text-sm">
+                      <span className="text-slate-400 md:hidden">{avgLabel}</span>
                       <RefValue amount={data.average.get(c.id)} onUse={use} title={avgLabel} />
                     </td>
-                    <td className="bg-slate-50 px-4 py-1.5">
+                    <td className="col-start-2 row-start-1 md:table-cell md:bg-slate-50 md:px-4 md:py-1.5">
                       <BudgetInput
                         label={`${c.name}の${monthLabel(target)}の予算`}
                         value={targetMap.get(c.id) ?? null}
@@ -176,14 +183,19 @@ export default function BudgetPage() {
                 );
               })}
             </tbody>
-            <tfoot className="border-t border-slate-200 text-right font-medium tabular-nums">
-              <tr>
-                <td className="px-4 py-2 text-left">合計</td>
-                <td className="px-4 py-2">{formatYen(sum(prevMap.values()))}</td>
-                <td className="px-4 py-2">{formatYen(sum(data.prevActual.values()))}</td>
-                <td className="px-4 py-2">{formatYen(sum(data.beforeActual.values()))}</td>
-                <td className="px-4 py-2">{data.months > 0 ? formatYen(sum(data.average.values())) : '—'}</td>
-                <td className="bg-slate-50 px-4 py-2 text-slate-900">{formatYen(targetTotal)}</td>
+            <tfoot className="block border-t border-slate-200 text-right font-medium tabular-nums md:table-footer-group">
+              <tr className="flex justify-between px-3 py-3 md:table-row md:p-0">
+                <td className="text-left md:table-cell md:px-4 md:py-2">合計</td>
+                <td className="hidden px-4 py-2 md:table-cell">{formatYen(sum(prevMap.values()))}</td>
+                <td className="hidden px-4 py-2 md:table-cell">{formatYen(sum(data.prevActual.values()))}</td>
+                <td className="hidden px-4 py-2 md:table-cell">{formatYen(sum(data.beforeActual.values()))}</td>
+                <td className="hidden px-4 py-2 md:table-cell">
+                  {data.months > 0 ? formatYen(sum(data.average.values())) : '—'}
+                </td>
+                <td className="text-slate-900 md:table-cell md:bg-slate-50 md:px-4 md:py-2">
+                  <span className="mr-2 text-xs font-normal text-slate-500 md:hidden">{monthLabel(target)}の予算</span>
+                  {formatYen(targetTotal)}
+                </td>
               </tr>
             </tfoot>
           </table>

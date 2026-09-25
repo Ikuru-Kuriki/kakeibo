@@ -92,8 +92,8 @@ export default function TransactionForm({
       }}
       aria-label={isEdit ? '取引の編集' : '取引の追加'}
     >
-      <div className="flex flex-wrap items-end gap-3">
-        <div className="flex flex-col gap-1">
+      <div className="grid grid-cols-2 gap-3 md:flex md:flex-wrap md:items-end">
+        <div className="col-span-2 flex flex-col gap-1">
           <span className="text-xs text-slate-500">種別</span>
           <div className="flex overflow-hidden rounded-md border border-slate-300" role="group" aria-label="種別">
             {(['expense', 'income'] as const).map((t) => (
@@ -105,7 +105,7 @@ export default function TransactionForm({
                   setType(t);
                   if (t !== type) setSubName('');
                 }}
-                className={`px-4 py-2 text-sm ${
+                className={`flex-1 px-4 py-2 text-sm md:flex-none ${
                   type === t
                     ? t === 'expense'
                       ? 'bg-rose-600 text-white'
@@ -118,11 +118,11 @@ export default function TransactionForm({
             ))}
           </div>
         </div>
-        <div className="flex flex-col gap-1">
+        <div className="col-span-2 flex flex-col gap-1">
           <span className="text-xs text-slate-500">日付</span>
           <DateField label="日付" value={date} onChange={setDate} />
         </div>
-        <label className="flex flex-col gap-1">
+        <label className="col-span-2 flex flex-col gap-1">
           <span className="text-xs text-slate-500">金額（円）</span>
           <input
             ref={amountRef}
@@ -132,10 +132,10 @@ export default function TransactionForm({
             value={amount}
             onChange={(e) => setAmount(e.target.value)}
             placeholder="0"
-            className={`${inputClass} w-32 text-right tabular-nums`}
+            className={`${inputClass} w-full text-right tabular-nums md:w-32`}
           />
         </label>
-        <label className="flex flex-col gap-1">
+        <label className="flex min-w-0 flex-col gap-1">
           <span className="text-xs text-slate-500">カテゴリ</span>
           <select
             value={categoryId}
@@ -143,7 +143,7 @@ export default function TransactionForm({
               setCategoryId(e.target.value);
               setSubName('');
             }}
-            className={`${inputClass} w-36`}
+            className={`${inputClass} w-full md:w-36`}
           >
             {options.map((c) => (
               <option key={c.id} value={c.id}>
@@ -153,7 +153,7 @@ export default function TransactionForm({
             ))}
           </select>
         </label>
-        <div className="flex flex-col gap-1">
+        <div className="flex min-w-0 flex-col gap-1">
           <span className="text-xs text-slate-500">小分類（任意）</span>
           <SubcategoryInput
             label="小分類"
@@ -161,18 +161,18 @@ export default function TransactionForm({
             subcategories={subcategories ?? []}
             value={subValue}
             onChange={setSubName}
-            className={`${inputClass} w-36`}
+            className={`${inputClass} w-full md:w-36`}
           />
         </div>
-        <label className="flex min-w-40 flex-1 flex-col gap-1">
+        <label className="col-span-2 flex min-w-40 flex-1 flex-col gap-1">
           <span className="text-xs text-slate-500">メモ</span>
           <input type="text" value={memo} onChange={(e) => setMemo(e.target.value)} className={inputClass} />
         </label>
-        <div className="flex gap-2">
+        <div className="col-span-2 flex gap-2">
           <button
             type="submit"
             disabled={saving}
-            className="rounded-md bg-slate-800 px-5 py-2 text-sm text-white hover:bg-slate-700 disabled:opacity-50"
+            className="flex-1 rounded-md bg-slate-800 px-5 py-2.5 text-sm text-white hover:bg-slate-700 disabled:opacity-50 md:flex-none md:py-2"
           >
             {submitLabel}
           </button>
@@ -180,7 +180,7 @@ export default function TransactionForm({
             <button
               type="button"
               onClick={onCancel}
-              className="rounded-md border border-slate-300 px-4 py-2 text-sm hover:bg-slate-100"
+              className="flex-1 rounded-md border border-slate-300 px-4 py-2.5 text-sm hover:bg-slate-100 md:flex-none md:py-2"
             >
               キャンセル
             </button>

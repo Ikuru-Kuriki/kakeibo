@@ -65,7 +65,7 @@ export default function RecurringForm({ categories, initial, defaultStartMonth, 
 
   return (
     <form onSubmit={handleSubmit} aria-label={initial ? '固定費の編集' : '固定費の追加'}>
-      <div className="flex flex-wrap items-end gap-3">
+      <div className="grid grid-cols-2 gap-3 md:flex md:flex-wrap md:items-end">
         <div className="flex flex-col gap-1">
           <span className="text-xs text-slate-500">種別</span>
           <div className="flex overflow-hidden rounded-md border border-slate-300" role="group" aria-label="種別">
@@ -96,7 +96,7 @@ export default function RecurringForm({ categories, initial, defaultStartMonth, 
               setCategoryId(e.target.value);
               setName('');
             }}
-            className={`${inputClass} w-36`}
+            className={`${inputClass} w-full md:w-36`}
           >
             {options.map((c) => (
               <option key={c.id} value={c.id}>
@@ -114,7 +114,7 @@ export default function RecurringForm({ categories, initial, defaultStartMonth, 
             value={name}
             onChange={setName}
             placeholder="家賃"
-            className={`${inputClass} w-40`}
+            className={`${inputClass} w-full md:w-40`}
           />
         </div>
         <label className="flex flex-col gap-1">
@@ -124,7 +124,7 @@ export default function RecurringForm({ categories, initial, defaultStartMonth, 
             inputMode="numeric"
             value={amount}
             onChange={(e) => setAmount(e.target.value)}
-            className={`${inputClass} w-32 text-right tabular-nums`}
+            className={`${inputClass} w-full text-right tabular-nums md:w-32`}
           />
         </label>
         <label className="flex flex-col gap-1">
@@ -149,15 +149,23 @@ export default function RecurringForm({ categories, initial, defaultStartMonth, 
             required
             value={startMonth}
             onChange={(e) => setStartMonth(e.target.value)}
-            className={inputClass}
+            className={`${inputClass} w-full md:w-auto`}
           />
         </label>
         <label className="flex flex-col gap-1">
           <span className="text-xs text-slate-500">終了月（任意）</span>
-          <input type="month" value={endMonth} onChange={(e) => setEndMonth(e.target.value)} className={inputClass} />
+          <input
+            type="month"
+            value={endMonth}
+            onChange={(e) => setEndMonth(e.target.value)}
+            className={`${inputClass} w-full md:w-auto`}
+          />
         </label>
-        <div className="flex gap-2">
-          <button type="submit" className="rounded-md bg-slate-800 px-5 py-2 text-sm text-white hover:bg-slate-700">
+        <div className="col-span-2 flex gap-2">
+          <button
+            type="submit"
+            className="flex-1 rounded-md bg-slate-800 px-5 py-2.5 text-sm text-white hover:bg-slate-700 md:flex-none md:py-2"
+          >
             {submitLabel}
           </button>
           {onCancel && (

@@ -12,11 +12,11 @@ export default function MonthTotals({ summary }: { summary: MonthSummary }) {
     },
   ];
   return (
-    <dl className="grid grid-cols-3 gap-4">
+    <dl className="grid grid-cols-3 gap-2 md:gap-4">
       {items.map((item) => (
-        <div key={item.label} className="rounded-lg border border-slate-200 bg-white px-5 py-4">
+        <div key={item.label} className="min-w-0 rounded-lg border border-slate-200 bg-white px-3 py-3 md:px-5 md:py-4">
           <dt className="text-xs text-slate-500">{item.label}</dt>
-          <dd className={`mt-1 text-2xl font-bold tabular-nums ${item.className}`}>{formatYen(item.value)}</dd>
+          <dd className={`mt-1 text-sm font-bold whitespace-nowrap sm:text-base md:text-2xl ${item.className}`}>{formatYen(item.value)}</dd>
         </div>
       ))}
     </dl>

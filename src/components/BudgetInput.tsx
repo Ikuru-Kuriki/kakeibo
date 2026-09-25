@@ -76,7 +76,7 @@ export default function BudgetInput({ value, placeholder, label, onSave }: Props
             setStatus('idle');
           }
         }}
-        className={`w-32 rounded-md border px-3 py-1.5 text-right text-sm tabular-nums focus:outline-none ${
+        className={`w-28 rounded-md md:w-32 border px-3 py-1.5 text-right text-sm tabular-nums focus:outline-none ${
           status === 'error'
             ? 'border-red-400 focus:border-red-500'
             : 'border-slate-300 focus:border-slate-500'

@@ -58,8 +58,8 @@ export default function RecurringPage() {
           {rules.length === 0 ? (
             <p className="p-8 text-center text-sm text-slate-500">固定費はまだ登録されていません</p>
           ) : (
-            <table className="w-full text-sm">
-              <thead className="bg-slate-50 text-left text-xs text-slate-500">
+            <table className="block w-full text-sm md:table">
+              <thead className="hidden bg-slate-50 text-left text-xs text-slate-500 md:table-header-group">
                 <tr>
                   <th className="px-4 py-2 font-medium">小分類（名前）</th>
                   <th className="px-4 py-2 font-medium">カテゴリ</th>
@@ -69,12 +69,12 @@ export default function RecurringPage() {
                   <th className="w-32 px-4 py-2" />
                 </tr>
               </thead>
-              <tbody className="divide-y divide-slate-100">
+              <tbody className="block divide-y divide-slate-100 md:table-row-group">
                 {rules.map((r) => {
                   if (r.id === editingId) {
                     return (
-                      <tr key={r.id} className="bg-slate-50">
-                        <td colSpan={6} className="px-4 py-3">
+                      <tr key={r.id} className="block bg-slate-50 md:table-row">
+                        <td colSpan={6} className="block px-4 py-3 md:table-cell">
                           <RecurringForm
                             categories={categories}
                             initial={r}
@@ -92,9 +92,12 @@ export default function RecurringPage() {
                   }
                   const c = byId.get(r.categoryId);
                   return (
-                    <tr key={r.id}>
-                      <td className="px-4 py-2 font-medium">{ruleName(r)}</td>
-                      <td className="px-4 py-2">
+                    <tr
+                      key={r.id}
+                      className="grid grid-cols-[minmax(0,1fr)_auto] items-center gap-x-3 gap-y-1 px-3 py-3 md:table-row md:p-0"
+                    >
+                      <td className="col-start-1 row-start-1 font-medium md:table-cell md:px-4 md:py-2">{ruleName(r)}</td>
+                      <td className="col-start-1 row-start-2 text-xs text-slate-600 md:table-cell md:px-4 md:py-2 md:text-sm md:text-slate-800">
                         <span className="inline-flex items-center gap-2">
                           <span
                             className="inline-block size-2.5 rounded-full"
@@ -105,13 +108,16 @@ export default function RecurringPage() {
                         </span>
                       </td>
                       <td
-                        className={`px-4 py-2 text-right tabular-nums ${r.type === 'income' ? 'text-emerald-700' : ''}`}
+                        className={`col-start-2 row-start-1 text-right tabular-nums md:table-cell md:px-4 md:py-2 ${r.type === 'income' ? 'text-emerald-700' : ''}`}
                       >
                         {r.type === 'income' ? '+' : '−'}
                         {formatYen(r.amount)}
                       </td>
-                      <td className="px-4 py-2 tabular-nums">{r.dayOfMonth}日</td>
-                      <td className="px-4 py-2 text-slate-600">
+                      <td className="col-start-2 row-start-2 text-right text-xs text-slate-600 tabular-nums md:table-cell md:px-4 md:py-2 md:text-left md:text-sm md:text-slate-800">
+                        <span className="md:hidden">毎月</span>
+                        {r.dayOfMonth}日
+                      </td>
+                      <td className="col-span-2 row-start-3 text-xs text-slate-600 md:table-cell md:px-4 md:py-2 md:text-sm">
                         {period(r)}
                         {r.skippedMonths.length > 0 && (
                           <div className="mt-1 flex flex-wrap items-center gap-1.5 text-xs">
@@ -135,7 +141,7 @@ export default function RecurringPage() {
                           </div>
                         )}
                       </td>
-                      <td className="space-x-1 px-4 py-2 text-right">
+                      <td className="col-span-2 row-start-4 space-x-1 text-right md:table-cell md:px-4 md:py-2">
                         <button
                           type="button"
                           onClick={() => setEditingId(r.id)}
