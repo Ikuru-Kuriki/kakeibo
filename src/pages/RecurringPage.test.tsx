@@ -60,3 +60,25 @@ describe('固定費', () => {
     expect(await screen.findByText('固定')).toBeTruthy();
   });
 });
+
+describe('この月はなしの取り消し', () => {
+  it('直後の「元に戻す」と、一覧の「戻す」で確認待ちに戻せる', async () => {
+    const { addRecurring, listCategories, listPendingRecurring } = await import('../db/repository');
+    const rent = (await listCategories()).find((c) => c.name === '住居')!;
+    await addRecurring({ name: '家賃', type: 'expense', categoryId: rent.id, amount: 85000, dayOfMonth: 27, startMonth: '2026-09', endMonth: null });
+    const user = userEvent.setup();
+    render(
+      <MemoryRouter>
+        <RecurringPage />
+      </MemoryRouter>,
+    );
+    const region = () => screen.findByRole('region', { name: '確認待ちの固定費' });
+    await user.click(within(await region()).getByRole('button', { name: '家賃（2026年9月分）はなし' }));
+    await user.click(await within(await region()).findByRole('button', { name: '元に戻す' }));
+    await waitFor(async () => expect(await listPendingRecurring('2026-09')).toHaveLength(1));
+
+    await user.click(await within(await region()).findByRole('button', { name: '家賃（2026年9月分）はなし' }));
+    await user.click(await screen.findByRole('button', { name: '家賃の2026年9月分を確認待ちに戻す' }));
+    await waitFor(async () => expect(await listPendingRecurring('2026-09')).toHaveLength(1));
+  });
+});

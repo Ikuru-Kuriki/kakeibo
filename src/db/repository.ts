@@ -277,3 +277,13 @@ export async function earliestTransactionDate(): Promise<string | null> {
   const first = await db.transactions.orderBy('date').filter(alive).first();
   return first?.date ?? null;
 }
+
+/** 「この月はなし」を取り消して、確認待ちに戻す */
+export async function unskipRecurring(ruleId: Id, month: YearMonth): Promise<void> {
+  const rule = await db.recurring.get(ruleId);
+  if (!rule || !rule.skippedMonths.includes(month)) return;
+  await db.recurring.update(ruleId, {
+    skippedMonths: rule.skippedMonths.filter((m) => m !== month),
+    updatedAt: now(),
+  });
+}

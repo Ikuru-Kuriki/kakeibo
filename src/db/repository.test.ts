@@ -209,6 +209,10 @@ describe('固定費', () => {
 
     await skipRecurring(rule.id, '2026-09');
     expect(await listPendingRecurring('2026-09')).toEqual([]);
+    const { unskipRecurring } = await import('./repository');
+    await unskipRecurring(rule.id, '2026-09');
+    expect((await listPendingRecurring('2026-09')).map((p) => p.month)).toEqual(['2026-09']);
+    await skipRecurring(rule.id, '2026-09');
 
     await deleteTransaction(tx.id);
     expect(await listPendingRecurring('2026-09')).toEqual([]);

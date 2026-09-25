@@ -3,11 +3,21 @@ import { Link } from 'react-router';
 import { formatYen, parseAmount } from '../domain/money';
 import { formatMonthDayJa, formatYearMonthJa, today } from '../domain/period';
 import { occurrenceKey, type PendingOccurrence } from '../domain/recurring';
-import { confirmRecurring, skipRecurring } from '../db/repository';
+import { confirmRecurring, skipRecurring, unskipRecurring } from '../db/repository';
 import { NEUTRAL_COLOR } from '../db/defaults';
 import { useCategories, usePendingRecurring } from '../hooks/useData';
 
-function PendingRow({ item, categoryName, color }: { item: PendingOccurrence; categoryName: string; color: string }) {
+function PendingRow({
+  item,
+  categoryName,
+  color,
+  onSkipped,
+}: {
+  item: PendingOccurrence;
+  categoryName: string;
+  color: string;
+  onSkipped: (item: PendingOccurrence) => void;
+}) {
   const [amount, setAmount] = useState(item.rule.amount.toLocaleString('ja-JP'));
   const [error, setError] = useState<string | null>(null);
   const upcoming = item.date > today();
@@ -61,7 +71,13 @@ function PendingRow({ item, categoryName, color }: { item: PendingOccurrence; ca
         </button>
         <button
           type="button"
-          onClick={() => void run(() => skipRecurring(item.rule.id, item.month))}
+          onClick={() =>
+            void run(async () => {
+              // 先に「元に戻す」を出しておき、最後の1件でもカードが一瞬消えないようにする
+              onSkipped(item);
+              await skipRecurring(item.rule.id, item.month);
+            })
+          }
           className="rounded-md border border-slate-300 px-3 py-1 text-slate-600 hover:bg-slate-100"
           aria-label={`${item.rule.name}（${formatYearMonthJa(item.month)}分）はなし`}
         >
@@ -81,7 +97,9 @@ function PendingRow({ item, categoryName, color }: { item: PendingOccurrence; ca
 export default function PendingRecurring({ showSettingsLink = true }: { showSettingsLink?: boolean }) {
   const pending = usePendingRecurring();
   const categories = useCategories({ includeArchived: true });
-  if (!pending || !categories || pending.length === 0) return null;
+  const [lastSkipped, setLastSkipped] = useState<PendingOccurrence | null>(null);
+  // 最後の1件を「なし」にしても、元に戻せるようカードは残す
+  if (!pending || !categories || (pending.length === 0 && !lastSkipped)) return null;
   const byId = new Map(categories.map((c) => [c.id, c]));
 
   async function confirmAll() {
@@ -102,6 +120,7 @@ export default function PendingRecurring({ showSettingsLink = true }: { showSett
               固定費の設定
             </Link>
           )}
+          {pending.length > 0 && (
           <button
             type="button"
             onClick={() => void confirmAll()}
@@ -109,11 +128,34 @@ export default function PendingRecurring({ showSettingsLink = true }: { showSett
           >
             すべて目安の金額で確定
           </button>
+          )}
         </div>
       </div>
       <p className="mb-2 text-xs text-slate-500">
         金額が違うときは直してから「確定」してください。確定すると取引として記録されます。
       </p>
+      {lastSkipped && (
+        <p className="mb-2 flex items-center gap-3 rounded-md bg-white px-3 py-2 text-sm text-slate-600">
+          {lastSkipped.rule.name}（{formatYearMonthJa(lastSkipped.month)}分）を「なし」にしました。
+          <button
+            type="button"
+            onClick={() =>
+              void unskipRecurring(lastSkipped.rule.id, lastSkipped.month).then(() => setLastSkipped(null))
+            }
+            className="font-medium text-slate-800 underline hover:text-slate-950"
+          >
+            元に戻す
+          </button>
+          <button
+            type="button"
+            aria-label="閉じる"
+            onClick={() => setLastSkipped(null)}
+            className="ml-auto text-slate-400 hover:text-slate-700"
+          >
+            ×
+          </button>
+        </p>
+      )}
       <ul className="divide-y divide-amber-100">
         {pending.map((p) => {
           const c = byId.get(p.rule.categoryId);
@@ -123,6 +165,7 @@ export default function PendingRecurring({ showSettingsLink = true }: { showSett
               item={p}
               categoryName={c?.name ?? '（不明）'}
               color={c?.color ?? NEUTRAL_COLOR}
+              onSkipped={setLastSkipped}
             />
           );
         })}

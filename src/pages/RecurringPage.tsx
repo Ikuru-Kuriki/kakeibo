@@ -5,7 +5,7 @@ import RecurringForm from '../components/RecurringForm';
 import { formatYen } from '../domain/money';
 import { currentPeriod, formatYearMonthJa } from '../domain/period';
 import type { Id, RecurringRule } from '../domain/types';
-import { addRecurring, deleteRecurring, updateRecurring } from '../db/repository';
+import { addRecurring, deleteRecurring, unskipRecurring, updateRecurring } from '../db/repository';
 import { NEUTRAL_COLOR } from '../db/defaults';
 import { useCategories, useRecurring, useSettings } from '../hooks/useData';
 
@@ -35,6 +35,7 @@ export default function RecurringPage() {
         <p className="text-sm text-slate-500">
           家賃やサブスクなど毎月決まった取引を登録すると、毎月「確認待ち」に並びます。
           「今月の記録」画面で金額を確かめて「確定」すると取引として記録されます。
+          「この月はなし」にした月は、下の一覧の「戻す」で確認待ちに戻せます。
         </p>
 
         <PendingRecurring showSettingsLink={false} />
@@ -108,7 +109,30 @@ export default function RecurringPage() {
                         {formatYen(r.amount)}
                       </td>
                       <td className="px-4 py-2 tabular-nums">{r.dayOfMonth}日</td>
-                      <td className="px-4 py-2 text-slate-600">{period(r)}</td>
+                      <td className="px-4 py-2 text-slate-600">
+                        {period(r)}
+                        {r.skippedMonths.length > 0 && (
+                          <div className="mt-1 flex flex-wrap items-center gap-1.5 text-xs">
+                            <span className="text-slate-400">なしにした月:</span>
+                            {[...r.skippedMonths].sort().map((m) => (
+                              <span
+                                key={m}
+                                className="inline-flex items-center gap-1 rounded bg-slate-100 py-0.5 pr-0.5 pl-2"
+                              >
+                                {formatYearMonthJa(m)}
+                                <button
+                                  type="button"
+                                  onClick={() => void unskipRecurring(r.id, m)}
+                                  aria-label={`${r.name}の${formatYearMonthJa(m)}分を確認待ちに戻す`}
+                                  className="rounded px-1.5 text-slate-700 underline hover:bg-slate-200"
+                                >
+                                  戻す
+                                </button>
+                              </span>
+                            ))}
+                          </div>
+                        )}
+                      </td>
                       <td className="space-x-1 px-4 py-2 text-right">
                         <button
                           type="button"
