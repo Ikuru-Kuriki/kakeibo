@@ -6,6 +6,7 @@ import type {
   Id,
   RecurringRule,
   RecurringRuleInput,
+  Subcategory,
   Transaction,
   TransactionInput,
   YearMonth,
@@ -58,9 +59,16 @@ export async function listTransactionsInPeriod(ym: YearMonth): Promise<Transacti
   return rows.sort((a, b) => b.date.localeCompare(a.date) || b.createdAt.localeCompare(a.createdAt));
 }
 
+async function assertSubcategoryMatches(input: TransactionInput): Promise<void> {
+  if (!input.subcategoryId) return;
+  const sub = await db.subcategories.get(input.subcategoryId);
+  if (!sub || sub.categoryId !== input.categoryId) throw new Error('小分類がカテゴリと合っていません');
+}
+
 export async function addTransaction(input: TransactionInput): Promise<Transaction> {
   validateTransaction(input);
-  const row: Transaction = { ...newMeta(), ...input, memo: input.memo.trim() };
+  await assertSubcategoryMatches(input);
+  const row: Transaction = { ...newMeta(), ...input, subcategoryId: input.subcategoryId ?? null, memo: input.memo.trim() };
   await db.transactions.add(row);
   return row;
 }
@@ -70,7 +78,8 @@ export async function updateTransaction(id: Id, patch: Partial<TransactionInput>
   if (!current || !alive(current)) throw new Error('取引が見つかりません');
   const next = { ...current, ...patch };
   validateTransaction(next);
-  await db.transactions.put({ ...next, memo: next.memo.trim(), updatedAt: now() });
+  await assertSubcategoryMatches(next);
+  await db.transactions.put({ ...next, subcategoryId: next.subcategoryId ?? null, memo: next.memo.trim(), updatedAt: now() });
 }
 
 export async function deleteTransaction(id: Id): Promise<void> {
@@ -185,7 +194,7 @@ export async function copyBudgets(from: YearMonth, to: YearMonth): Promise<numbe
 // ---------- Recurring（固定費） ----------
 
 function validateRecurring(input: RecurringRuleInput): void {
-  if (!input.name.trim()) throw new Error('名前を入力してください');
+  if (!input.subcategoryId) throw new Error('小分類（名前）を入力してください');
   if (!isValidAmount(input.amount)) throw new Error('金額は1円以上の整数で入力してください');
   if (!Number.isInteger(input.dayOfMonth) || input.dayOfMonth < 1 || input.dayOfMonth > 31) {
     throw new Error('日は1〜31で入力してください');
@@ -197,12 +206,13 @@ function validateRecurring(input: RecurringRuleInput): void {
 
 export async function listRecurring(): Promise<RecurringRule[]> {
   const rows = await db.recurring.filter(alive).toArray();
-  return rows.sort((a, b) => a.dayOfMonth - b.dayOfMonth || a.name.localeCompare(b.name));
+  return rows.sort((a, b) => a.dayOfMonth - b.dayOfMonth || a.createdAt.localeCompare(b.createdAt));
 }
 
 export async function addRecurring(input: RecurringRuleInput): Promise<RecurringRule> {
   validateRecurring(input);
-  const row: RecurringRule = { ...newMeta(), ...input, name: input.name.trim(), skippedMonths: [] };
+  await assertSubcategoryMatches({ ...input, date: '', memo: '' });
+  const row: RecurringRule = { ...newMeta(), ...input, skippedMonths: [] };
   await db.recurring.add(row);
   return row;
 }
@@ -212,7 +222,8 @@ export async function updateRecurring(id: Id, patch: Partial<RecurringRuleInput>
   if (!current || !alive(current)) throw new Error('固定費が見つかりません');
   const next = { ...current, ...patch };
   validateRecurring(next);
-  await db.recurring.put({ ...next, name: next.name.trim(), updatedAt: now() });
+  await assertSubcategoryMatches({ ...next, date: '', memo: '' });
+  await db.recurring.put({ ...next, updatedAt: now() });
 }
 
 /** 固定費を削除する。確定済みの取引はそのまま残る */
@@ -232,7 +243,8 @@ export async function listPendingRecurring(current: YearMonth): Promise<PendingO
   const handled = new Set(
     confirmed.filter((t) => t.recurringMonth).map((t) => occurrenceKey(t.recurringId!, t.recurringMonth!)),
   );
-  return pendingOccurrences(rules, handled, current);
+  const names = new Map((await db.subcategories.toArray()).map((sc) => [sc.id, sc.name]));
+  return pendingOccurrences(rules, handled, current, names);
 }
 
 /** 確認待ちを確定して取引にする（金額・日付は変更可） */
@@ -241,7 +253,7 @@ export async function confirmRecurring(
   month: YearMonth,
   override: { amount?: number; date?: string } = {},
 ): Promise<Transaction> {
-  return db.transaction('rw', db.transactions, db.recurring, async () => {
+  return db.transaction('rw', db.transactions, db.recurring, db.subcategories, async () => {
     const rule = await db.recurring.get(ruleId);
     if (!rule || !alive(rule)) throw new Error('固定費が見つかりません');
     const done = await db.transactions
@@ -255,7 +267,8 @@ export async function confirmRecurring(
       amount: override.amount ?? rule.amount,
       type: rule.type,
       categoryId: rule.categoryId,
-      memo: rule.name,
+      subcategoryId: rule.subcategoryId,
+      memo: '',
     };
     validateTransaction(input);
     const row: Transaction = { ...newMeta(), ...input, recurringId: ruleId, recurringMonth: month };
@@ -286,4 +299,50 @@ export async function unskipRecurring(ruleId: Id, month: YearMonth): Promise<voi
     skippedMonths: rule.skippedMonths.filter((m) => m !== month),
     updatedAt: now(),
   });
+}
+
+// ---------- Subcategories（小分類） ----------
+
+export async function listSubcategories({ includeArchived = false } = {}): Promise<Subcategory[]> {
+  const rows = (await db.subcategories.filter(alive).toArray()).sort(
+    (a, b) => a.order - b.order || a.createdAt.localeCompare(b.createdAt),
+  );
+  return includeArchived ? rows : rows.filter((sc) => !sc.archived);
+}
+
+/**
+ * 名前から小分類を探し、なければ作る（入力フォームでその場で登録するため）。
+ * アーカイブ済みの同名があれば戻して使う。空欄なら null。
+ */
+export async function resolveSubcategory(categoryId: Id, name: string): Promise<Id | null> {
+  const trimmed = name.trim();
+  if (!trimmed) return null;
+  return db.transaction('rw', db.subcategories, async () => {
+    const siblings = (await db.subcategories.where('categoryId').equals(categoryId).toArray()).filter(alive);
+    const found = siblings.find((sc) => sc.name === trimmed);
+    if (found) {
+      if (found.archived) await db.subcategories.update(found.id, { archived: false, updatedAt: now() });
+      return found.id;
+    }
+    const order = siblings.reduce((max, sc) => Math.max(max, sc.order + 1), 0);
+    const row: Subcategory = { ...newMeta(), categoryId, name: trimmed, order, archived: false };
+    await db.subcategories.add(row);
+    return row.id;
+  });
+}
+
+export async function renameSubcategory(id: Id, name: string): Promise<void> {
+  const trimmed = name.trim();
+  if (!trimmed) throw new Error('小分類の名前を入力してください');
+  const current = await db.subcategories.get(id);
+  if (!current || !alive(current)) throw new Error('小分類が見つかりません');
+  const dup = (await db.subcategories.where('categoryId').equals(current.categoryId).toArray()).find(
+    (sc) => alive(sc) && sc.id !== id && sc.name === trimmed,
+  );
+  if (dup) throw new Error(`「${trimmed}」は既にあります${dup.archived ? '（アーカイブ済み）' : ''}`);
+  await db.subcategories.update(id, { name: trimmed, updatedAt: now() });
+}
+
+export async function archiveSubcategory(id: Id, archived = true): Promise<void> {
+  await db.subcategories.update(id, { archived, updatedAt: now() });
 }

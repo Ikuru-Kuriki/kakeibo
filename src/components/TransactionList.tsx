@@ -4,6 +4,7 @@ import { formatMonthDayJa } from '../domain/period';
 import type { Category, Id, Transaction, TransactionInput } from '../domain/types';
 import { deleteTransaction, updateTransaction } from '../db/repository';
 import TransactionForm from './TransactionForm';
+import { useSubcategories } from '../hooks/useData';
 
 interface Props {
   transactions: readonly Transaction[];
@@ -16,6 +17,8 @@ const formatDate = formatMonthDayJa;
 export default function TransactionList({ transactions, categories }: Props) {
   const [editingId, setEditingId] = useState<Id | null>(null);
   const categoryById = new Map(categories.map((c) => [c.id, c]));
+  const subcategories = useSubcategories({ includeArchived: true });
+  const subName = (id: Id | null | undefined) => (id ? subcategories?.find((sc) => sc.id === id)?.name : undefined);
 
   if (transactions.length === 0) {
     return (
@@ -42,7 +45,7 @@ export default function TransactionList({ transactions, categories }: Props) {
         <thead className="bg-slate-50 text-left text-xs text-slate-500">
           <tr>
             <th className="w-28 px-4 py-2 font-medium">日付</th>
-            <th className="w-40 px-4 py-2 font-medium">カテゴリ</th>
+            <th className="w-56 px-4 py-2 font-medium">カテゴリ › 小分類</th>
             <th className="px-4 py-2 font-medium">メモ</th>
             <th className="w-36 px-4 py-2 text-right font-medium">金額</th>
             <th className="w-32 px-4 py-2" />
@@ -77,6 +80,9 @@ export default function TransactionList({ transactions, categories }: Props) {
                       aria-hidden
                     />
                     {category?.name ?? '（不明）'}
+                    {subName(t.subcategoryId) && (
+                      <span className="text-slate-500">› {subName(t.subcategoryId)}</span>
+                    )}
                   </span>
                 </td>
                 <td className="px-4 py-2 text-slate-600">

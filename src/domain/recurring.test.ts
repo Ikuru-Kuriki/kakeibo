@@ -7,8 +7,8 @@ const rule = (patch: Partial<RecurringRule> = {}): RecurringRule => ({
   createdAt: '',
   updatedAt: '',
   deletedAt: null,
-  name: '家賃',
   type: 'expense',
+  subcategoryId: 's-rent',
   categoryId: 'rent',
   amount: 85000,
   dayOfMonth: 27,
@@ -41,8 +41,13 @@ describe('pendingOccurrences', () => {
   });
 
   it('複数ルールを日付順に並べる', () => {
-    const rules = [rule(), rule({ id: 'r2', name: '通信', dayOfMonth: 10, startMonth: '2026-09' })];
-    const result = pendingOccurrences(rules, new Set([occurrenceKey('r1', '2026-07'), occurrenceKey('r1', '2026-08')]), '2026-09');
-    expect(result.map((p) => p.rule.name)).toEqual(['通信', '家賃']);
+    const rules = [rule(), rule({ id: 'r2', subcategoryId: 's-phone', dayOfMonth: 10, startMonth: '2026-09' })];
+    const names = new Map([
+      ['s-rent', '家賃'],
+      ['s-phone', 'スマホ'],
+    ]);
+    const handled = new Set([occurrenceKey('r1', '2026-07'), occurrenceKey('r1', '2026-08')]);
+    const result = pendingOccurrences(rules, handled, '2026-09', names);
+    expect(result.map((p) => p.name)).toEqual(['スマホ', '家賃']);
   });
 });

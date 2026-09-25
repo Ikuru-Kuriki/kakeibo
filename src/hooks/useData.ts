@@ -8,6 +8,7 @@ import {
   listCategories,
   listPendingRecurring,
   listRecurring,
+  listSubcategories,
   listTransactionsInPeriod,
 } from '../db/repository';
 import { currentPeriod } from '../domain/period';
@@ -59,4 +60,9 @@ export function useEarliestTransactionDate() {
 export function useBudgetsForMonths(yms: readonly YearMonth[]) {
   const key = yms.join(',');
   return useLiveQuery(() => Promise.all(yms.map((ym) => listBudgets(ym))), [key]);
+}
+
+export function useSubcategories(options: { includeArchived?: boolean } = {}) {
+  const includeArchived = options.includeArchived ?? false;
+  return useLiveQuery(() => listSubcategories({ includeArchived }), [includeArchived]);
 }

@@ -1,4 +1,5 @@
-import type { Budget, Category, RecurringRule, Transaction } from '../domain/types';
+import type { Budget, Category, RecurringRule, Subcategory, Transaction } from '../domain/types';
+import { migrateRecurringNamesToSubcategories, type RecurringRuleV3 } from './migrations';
 import { db, type SettingsRow } from './db';
 import { V1_DEFAULT_COLOR_MIGRATION } from './defaults';
 
@@ -10,7 +11,7 @@ import { V1_DEFAULT_COLOR_MIGRATION } from './defaults';
 
 export const BACKUP_FORMAT = 'kakeibo-backup';
 /** DB スキーマを変えたら上げ、migrateBackup に変換を追加する */
-export const SCHEMA_VERSION = 3;
+export const SCHEMA_VERSION = 4;
 
 export interface BackupData {
   format: typeof BACKUP_FORMAT;
@@ -22,11 +23,12 @@ export interface BackupData {
     budgets: Budget[];
     settings: SettingsRow[];
     recurring: RecurringRule[];
+    subcategories: Subcategory[];
   };
 }
 
 export async function exportBackup(): Promise<BackupData> {
-  return db.transaction('r', [db.transactions, db.categories, db.budgets, db.settings, db.recurring], async () => ({
+  return db.transaction('r', [db.transactions, db.categories, db.budgets, db.settings, db.recurring, db.subcategories], async () => ({
     format: BACKUP_FORMAT,
     schemaVersion: SCHEMA_VERSION,
     exportedAt: new Date().toISOString(),
@@ -36,6 +38,7 @@ export async function exportBackup(): Promise<BackupData> {
       budgets: await db.budgets.toArray(),
       settings: await db.settings.toArray(),
       recurring: await db.recurring.toArray(),
+      subcategories: await db.subcategories.toArray(),
     },
   }));
 }
@@ -70,6 +73,18 @@ function migrateBackup(backup: BackupData): BackupData {
     // v3: 固定費を追加（v2 以前のバックアップには無い）
     backup = { ...backup, schemaVersion: 3, data: { ...backup.data, recurring: [] } };
   }
+  if (backup.schemaVersion < 4) {
+    // v4: 固定費の名前を小分類に移す（DB の version(4) と同じ変換）
+    const result = migrateRecurringNamesToSubcategories(
+      backup.data.recurring as unknown as RecurringRuleV3[],
+      backup.data.transactions,
+    );
+    backup = {
+      ...backup,
+      schemaVersion: 4,
+      data: { ...backup.data, ...result },
+    };
+  }
   return backup;
 }
 
@@ -90,7 +105,8 @@ export function parseBackup(json: string): BackupData {
   assertRows('categories', data.categories, [...meta, 'name', 'type', 'color', 'order']);
   assertRows('budgets', data.budgets, [...meta, 'yearMonth', 'categoryId', 'amount']);
   assertRows('settings', data.settings ?? [], ['key']);
-  assertRows('recurring', data.recurring ?? [], [...meta, 'name', 'type', 'categoryId', 'amount', 'dayOfMonth', 'startMonth']);
+  assertRows('recurring', data.recurring ?? [], [...meta, 'type', 'categoryId', 'amount', 'dayOfMonth', 'startMonth']);
+  assertRows('subcategories', data.subcategories ?? [], [...meta, 'categoryId', 'name']);
   return migrateBackup({
     format: BACKUP_FORMAT,
     schemaVersion: parsed.schemaVersion,
@@ -101,13 +117,14 @@ export function parseBackup(json: string): BackupData {
       budgets: data.budgets as Budget[],
       settings: (data.settings ?? []) as SettingsRow[],
       recurring: (data.recurring ?? []) as RecurringRule[],
+      subcategories: (data.subcategories ?? []) as Subcategory[],
     },
   });
 }
 
 /** 現在のデータをすべて置き換えて復元する */
 export async function importBackup(backup: BackupData): Promise<void> {
-  const tables = [db.transactions, db.categories, db.budgets, db.settings, db.recurring];
+  const tables = [db.transactions, db.categories, db.budgets, db.settings, db.recurring, db.subcategories];
   await db.transaction('rw', tables, async () => {
     await Promise.all(tables.map((t) => t.clear()));
     await db.transactions.bulkAdd(backup.data.transactions);
@@ -115,6 +132,7 @@ export async function importBackup(backup: BackupData): Promise<void> {
     await db.budgets.bulkAdd(backup.data.budgets);
     await db.settings.bulkAdd(backup.data.settings);
     await db.recurring.bulkAdd(backup.data.recurring);
+    await db.subcategories.bulkAdd(backup.data.subcategories);
   });
 }
 

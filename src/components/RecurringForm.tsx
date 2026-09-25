@@ -2,6 +2,9 @@ import { useMemo, useState, type FormEvent } from 'react';
 import { selectableCategories } from '../domain/categories';
 import { parseAmount } from '../domain/money';
 import type { Category, EntryType, RecurringRuleInput, YearMonth } from '../domain/types';
+import { resolveSubcategory } from '../db/repository';
+import { useSubcategories } from '../hooks/useData';
+import SubcategoryInput from './SubcategoryInput';
 
 interface Props {
   categories: readonly Category[];
@@ -17,7 +20,10 @@ const inputClass =
 
 export default function RecurringForm({ categories, initial, defaultStartMonth, submitLabel, onSubmit, onCancel }: Props) {
   const [type, setType] = useState<EntryType>(initial?.type ?? 'expense');
-  const [name, setName] = useState(initial?.name ?? '');
+  const subcategories = useSubcategories({ includeArchived: true });
+  const initialName = subcategories?.find((sc) => sc.id === initial?.subcategoryId)?.name ?? '';
+  const [nameInput, setName] = useState<string | null>(null);
+  const name = nameInput ?? initialName;
   const [categoryId, setCategoryId] = useState(initial?.categoryId ?? '');
   const [amount, setAmount] = useState(initial ? String(initial.amount) : '');
   const [day, setDay] = useState(String(initial?.dayOfMonth ?? 27));
@@ -35,10 +41,12 @@ export default function RecurringForm({ categories, initial, defaultStartMonth, 
     e.preventDefault();
     const parsed = parseAmount(amount);
     if (parsed === null || parsed <= 0) return setError('金額は1円以上の整数で入力してください');
+    if (!name.trim()) return setError('小分類（名前）を入力してください');
     try {
+      const subcategoryId = await resolveSubcategory(selectedCategory, name);
       await onSubmit({
         type,
-        name,
+        subcategoryId: subcategoryId!,
         categoryId: selectedCategory,
         amount: parsed,
         dayOfMonth: Number(day),
@@ -81,18 +89,15 @@ export default function RecurringForm({ categories, initial, defaultStartMonth, 
           </div>
         </div>
         <label className="flex flex-col gap-1">
-          <span className="text-xs text-slate-500">名前</span>
-          <input
-            type="text"
-            value={name}
-            onChange={(e) => setName(e.target.value)}
-            placeholder="家賃"
-            className={`${inputClass} w-40`}
-          />
-        </label>
-        <label className="flex flex-col gap-1">
           <span className="text-xs text-slate-500">カテゴリ</span>
-          <select value={selectedCategory} onChange={(e) => setCategoryId(e.target.value)} className={`${inputClass} w-36`}>
+          <select
+            value={selectedCategory}
+            onChange={(e) => {
+              setCategoryId(e.target.value);
+              setName('');
+            }}
+            className={`${inputClass} w-36`}
+          >
             {options.map((c) => (
               <option key={c.id} value={c.id}>
                 {c.name}
@@ -100,6 +105,18 @@ export default function RecurringForm({ categories, initial, defaultStartMonth, 
             ))}
           </select>
         </label>
+        <div className="flex flex-col gap-1">
+          <span className="text-xs text-slate-500">小分類（名前）</span>
+          <SubcategoryInput
+            label="小分類（名前）"
+            categoryId={selectedCategory}
+            subcategories={subcategories ?? []}
+            value={name}
+            onChange={setName}
+            placeholder="家賃"
+            className={`${inputClass} w-40`}
+          />
+        </div>
         <label className="flex flex-col gap-1">
           <span className="text-xs text-slate-500">金額の目安（円）</span>
           <input

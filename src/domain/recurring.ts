@@ -8,6 +8,8 @@ import type { ISODate, RecurringRule, YearMonth } from './types';
 
 export interface PendingOccurrence {
   rule: RecurringRule;
+  /** 表示名（小分類の名前） */
+  name: string;
   /** 何月分か */
   month: YearMonth;
   /** 予定日 */
@@ -34,6 +36,7 @@ export function pendingOccurrences(
   rules: readonly RecurringRule[],
   handled: ReadonlySet<string>,
   current: YearMonth,
+  names: ReadonlyMap<string, string> = new Map(),
 ): PendingOccurrence[] {
   const result: PendingOccurrence[] = [];
   for (const rule of rules) {
@@ -41,8 +44,9 @@ export function pendingOccurrences(
     const last = rule.endMonth && rule.endMonth < current ? rule.endMonth : current;
     for (let month = rule.startMonth; month <= last; month = addMonths(month, 1)) {
       if (rule.skippedMonths.includes(month) || handled.has(occurrenceKey(rule.id, month))) continue;
-      result.push({ rule, month, date: occurrenceDate(month, rule.dayOfMonth) });
+      const name = names.get(rule.subcategoryId) ?? '（名前なし）';
+      result.push({ rule, name, month, date: occurrenceDate(month, rule.dayOfMonth) });
     }
   }
-  return result.sort((a, b) => a.date.localeCompare(b.date) || a.rule.name.localeCompare(b.rule.name));
+  return result.sort((a, b) => a.date.localeCompare(b.date) || a.name.localeCompare(b.name));
 }

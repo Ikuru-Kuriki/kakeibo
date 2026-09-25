@@ -28,8 +28,8 @@ describe('固定費', () => {
       </MemoryRouter>,
     );
     const form = await screen.findByRole('form', { name: '固定費の追加' });
-    await user.type(within(form).getByLabelText('名前'), '電気代');
     await user.selectOptions(within(form).getByLabelText('カテゴリ'), '水道光熱');
+    await user.type(within(form).getByLabelText('小分類（名前）'), '電気代');
     await user.type(within(form).getByLabelText('金額の目安（円）'), '8000');
     const day = within(form).getByLabelText('毎月の日');
     await user.clear(day);
@@ -54,18 +54,20 @@ describe('固定費', () => {
 
     await waitFor(async () => {
       const txs = await listTransactionsInPeriod('2026-09');
-      expect(txs.map((t) => [t.date, t.amount, t.memo])).toEqual([['2026-09-10', 9120, '電気代']]);
+      expect(txs.map((t) => [t.date, t.amount, t.memo])).toEqual([['2026-09-10', 9120, '']]);
     });
     await waitFor(() => expect(screen.queryByRole('region', { name: '確認待ちの固定費' })).toBeNull());
     expect(await screen.findByText('固定')).toBeTruthy();
+    expect(await screen.findByText('› 電気代')).toBeTruthy();
   });
 });
 
 describe('この月はなしの取り消し', () => {
   it('直後の「元に戻す」と、一覧の「戻す」で確認待ちに戻せる', async () => {
-    const { addRecurring, listCategories, listPendingRecurring } = await import('../db/repository');
+    const { addRecurring, listCategories, listPendingRecurring, resolveSubcategory } = await import('../db/repository');
     const rent = (await listCategories()).find((c) => c.name === '住居')!;
-    await addRecurring({ name: '家賃', type: 'expense', categoryId: rent.id, amount: 85000, dayOfMonth: 27, startMonth: '2026-09', endMonth: null });
+    const subcategoryId = (await resolveSubcategory(rent.id, '家賃'))!;
+    await addRecurring({ subcategoryId, type: 'expense', categoryId: rent.id, amount: 85000, dayOfMonth: 27, startMonth: '2026-09', endMonth: null });
     const user = userEvent.setup();
     render(
       <MemoryRouter>

@@ -33,6 +33,8 @@ export interface Transaction extends SyncMeta {
   amount: number;
   type: EntryType;
   categoryId: Id;
+  /** 小分類（なければ null） */
+  subcategoryId?: Id | null;
   memo: string;
   /** 固定費から確定した取引なら、その固定費の ID */
   recurringId?: Id | null;
@@ -42,10 +44,10 @@ export interface Transaction extends SyncMeta {
 
 /** 固定費（毎月の定期的な取引）のルール */
 export interface RecurringRule extends SyncMeta {
-  /** 名前（確定した取引のメモになる） */
-  name: string;
   type: EntryType;
   categoryId: Id;
+  /** 小分類（固定費の名前として表示する） */
+  subcategoryId: Id;
   /** 目安の金額（確定時に変更できる） */
   amount: number;
   /** 毎月の日（1〜31。その月にない日は月末） */
@@ -60,8 +62,17 @@ export interface RecurringRule extends SyncMeta {
 
 export type RecurringRuleInput = Pick<
   RecurringRule,
-  'name' | 'type' | 'categoryId' | 'amount' | 'dayOfMonth' | 'startMonth' | 'endMonth'
+  'type' | 'categoryId' | 'subcategoryId' | 'amount' | 'dayOfMonth' | 'startMonth' | 'endMonth'
 >;
+
+/** 小分類（カテゴリの下の分類。例: 住居 › 家賃） */
+export interface Subcategory extends SyncMeta {
+  categoryId: Id;
+  name: string;
+  order: number;
+  /** アーカイブ済みは候補に出さないが、過去の取引の表示には使う */
+  archived: boolean;
+}
 
 export interface Category extends SyncMeta {
   name: string;
@@ -100,5 +111,6 @@ export const DEFAULT_SETTINGS: AppSettings = {
 };
 
 /** 入力用（メタデータはリポジトリ層で付与する） */
-export type TransactionInput = Pick<Transaction, 'date' | 'amount' | 'type' | 'categoryId' | 'memo'>;
+export type TransactionInput = Pick<Transaction, 'date' | 'amount' | 'type' | 'categoryId' | 'memo'> &
+  Partial<Pick<Transaction, 'subcategoryId'>>;
 export type CategoryInput = Pick<Category, 'name' | 'type' | 'color'> & Partial<Pick<Category, 'order'>>;

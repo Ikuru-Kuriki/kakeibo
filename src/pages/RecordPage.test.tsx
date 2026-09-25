@@ -20,7 +20,7 @@ async function setup() {
   render(<RecordPage />);
   const form = await screen.findByRole('form', { name: '取引の追加' });
   // カテゴリの読み込みを待つ
-  await waitFor(() => expect(within(form).getByRole('combobox')).toHaveProperty('value', expect.stringMatching(/.+/)));
+  await waitFor(() => expect(within(form).getByLabelText('カテゴリ')).toHaveProperty('value', expect.stringMatching(/.+/)));
   return { user, form };
 }
 
@@ -42,7 +42,7 @@ describe('今月の記録画面', () => {
   it('種別を収入にするとカテゴリが収入用に切り替わる', async () => {
     const { user, form } = await setup();
     await user.click(within(form).getByRole('button', { name: '収入' }));
-    const options = within(form).getAllByRole('option').map((o) => o.textContent);
+    const options = within(within(form).getByLabelText('カテゴリ')).getAllByRole('option').map((o) => o.textContent);
     expect(options).toEqual(['給与', 'その他収入']);
   });
 
@@ -100,5 +100,28 @@ describe('日付の入力', () => {
     expect(within(form).getByLabelText('日付')).toHaveProperty('value', expected);
     await user.click(within(form).getByRole('button', { name: '次の日' }));
     expect(within(form).getByLabelText('日付')).toHaveProperty('value', t);
+  });
+});
+
+describe('小分類', () => {
+  it('その場で入力した小分類が登録され、次から候補に出る。カテゴリを変えると空になる', async () => {
+    const { user, form } = await setup();
+    await user.type(within(form).getByLabelText('金額（円）'), '1500');
+    await user.type(within(form).getByLabelText('小分類'), '外食');
+    await user.click(within(form).getByRole('button', { name: '追加' }));
+
+    const table = await screen.findByRole('table');
+    expect(await within(table).findByText('› 外食')).toBeTruthy();
+    expect(within(form).getByLabelText('小分類')).toHaveProperty('value', '');
+
+    // 候補（datalist）に出る
+    const listId = within(form).getByLabelText('小分類').getAttribute('list')!;
+    await waitFor(() =>
+      expect([...document.getElementById(listId)!.querySelectorAll('option')].map((o) => o.value)).toEqual(['外食']),
+    );
+
+    await user.type(within(form).getByLabelText('小分類'), 'コンビニ');
+    await user.selectOptions(within(form).getByLabelText('カテゴリ'), '日用品');
+    expect(within(form).getByLabelText('小分類')).toHaveProperty('value', '');
   });
 });

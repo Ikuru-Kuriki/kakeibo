@@ -44,7 +44,7 @@ function PendingRow({
       </span>
       <span className="inline-flex w-40 items-center gap-2">
         <span className="inline-block size-2.5 rounded-full" style={{ backgroundColor: color }} aria-hidden />
-        <span className="font-medium">{item.rule.name}</span>
+        <span className="font-medium">{item.name}</span>
       </span>
       <span className="w-24 text-slate-500">{categoryName}</span>
       <span className="inline-flex items-center gap-1">
@@ -52,7 +52,7 @@ function PendingRow({
         <input
           type="text"
           inputMode="numeric"
-          aria-label={`${item.rule.name}（${formatYearMonthJa(item.month)}分）の金額`}
+          aria-label={`${item.name}（${formatYearMonthJa(item.month)}分）の金額`}
           value={amount}
           onChange={(e) => setAmount(e.target.value)}
           onKeyDown={(e) => e.key === 'Enter' && confirm()}
@@ -65,7 +65,7 @@ function PendingRow({
           type="button"
           onClick={confirm}
           className="rounded-md bg-slate-800 px-3 py-1 text-white hover:bg-slate-700"
-          aria-label={`${item.rule.name}（${formatYearMonthJa(item.month)}分）を確定`}
+          aria-label={`${item.name}（${formatYearMonthJa(item.month)}分）を確定`}
         >
           確定
         </button>
@@ -79,7 +79,7 @@ function PendingRow({
             })
           }
           className="rounded-md border border-slate-300 px-3 py-1 text-slate-600 hover:bg-slate-100"
-          aria-label={`${item.rule.name}（${formatYearMonthJa(item.month)}分）はなし`}
+          aria-label={`${item.name}（${formatYearMonthJa(item.month)}分）はなし`}
         >
           この月はなし
         </button>
@@ -136,7 +136,7 @@ export default function PendingRecurring({ showSettingsLink = true }: { showSett
       </p>
       {lastSkipped && (
         <p className="mb-2 flex items-center gap-3 rounded-md bg-white px-3 py-2 text-sm text-slate-600">
-          {lastSkipped.rule.name}（{formatYearMonthJa(lastSkipped.month)}分）を「なし」にしました。
+          {lastSkipped.name}（{formatYearMonthJa(lastSkipped.month)}分）を「なし」にしました。
           <button
             type="button"
             onClick={() =>

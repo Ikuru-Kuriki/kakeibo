@@ -7,7 +7,7 @@ import { currentPeriod, formatYearMonthJa } from '../domain/period';
 import type { Id, RecurringRule } from '../domain/types';
 import { addRecurring, deleteRecurring, unskipRecurring, updateRecurring } from '../db/repository';
 import { NEUTRAL_COLOR } from '../db/defaults';
-import { useCategories, useRecurring, useSettings } from '../hooks/useData';
+import { useCategories, useRecurring, useSettings, useSubcategories } from '../hooks/useData';
 
 function period(rule: RecurringRule): string {
   return `${formatYearMonthJa(rule.startMonth)}〜${rule.endMonth ? formatYearMonthJa(rule.endMonth) : ''}`;
@@ -18,13 +18,15 @@ export default function RecurringPage() {
   const current = currentPeriod(monthStartDay);
   const categories = useCategories({ includeArchived: true });
   const rules = useRecurring();
+  const subcategories = useSubcategories({ includeArchived: true });
   const [editingId, setEditingId] = useState<Id | null>(null);
 
-  if (!categories || !rules) return null;
+  if (!categories || !rules || !subcategories) return null;
   const byId = new Map(categories.map((c) => [c.id, c]));
+  const ruleName = (r: RecurringRule) => subcategories.find((sc) => sc.id === r.subcategoryId)?.name ?? '（名前なし）';
 
   async function handleDelete(rule: RecurringRule) {
-    if (!window.confirm(`固定費「${rule.name}」を削除しますか？（これまでに確定した取引は残ります）`)) return;
+    if (!window.confirm(`固定費「${ruleName(rule)}」を削除しますか？（これまでに確定した取引は残ります）`)) return;
     await deleteRecurring(rule.id);
   }
 
@@ -59,7 +61,7 @@ export default function RecurringPage() {
             <table className="w-full text-sm">
               <thead className="bg-slate-50 text-left text-xs text-slate-500">
                 <tr>
-                  <th className="px-4 py-2 font-medium">名前</th>
+                  <th className="px-4 py-2 font-medium">小分類（名前）</th>
                   <th className="px-4 py-2 font-medium">カテゴリ</th>
                   <th className="px-4 py-2 text-right font-medium">金額の目安</th>
                   <th className="px-4 py-2 font-medium">毎月</th>
@@ -91,7 +93,7 @@ export default function RecurringPage() {
                   const c = byId.get(r.categoryId);
                   return (
                     <tr key={r.id}>
-                      <td className="px-4 py-2 font-medium">{r.name}</td>
+                      <td className="px-4 py-2 font-medium">{ruleName(r)}</td>
                       <td className="px-4 py-2">
                         <span className="inline-flex items-center gap-2">
                           <span
@@ -123,7 +125,7 @@ export default function RecurringPage() {
                                 <button
                                   type="button"
                                   onClick={() => void unskipRecurring(r.id, m)}
-                                  aria-label={`${r.name}の${formatYearMonthJa(m)}分を確認待ちに戻す`}
+                                  aria-label={`${ruleName(r)}の${formatYearMonthJa(m)}分を確認待ちに戻す`}
                                   className="rounded px-1.5 text-slate-700 underline hover:bg-slate-200"
                                 >
                                   戻す

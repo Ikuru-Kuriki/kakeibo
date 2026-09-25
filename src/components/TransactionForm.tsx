@@ -2,6 +2,9 @@ import { useEffect, useMemo, useRef, useState, type FormEvent } from 'react';
 import { selectableCategories } from '../domain/categories';
 import { parseAmount } from '../domain/money';
 import DateField from './DateField';
+import SubcategoryInput from './SubcategoryInput';
+import { resolveSubcategory } from '../db/repository';
+import { useSubcategories } from '../hooks/useData';
 import { isValidISODate, today } from '../domain/period';
 import type { Category, EntryType, TransactionInput } from '../domain/types';
 
@@ -36,6 +39,11 @@ export default function TransactionForm({
   const [amount, setAmount] = useState(initial ? String(initial.amount) : '');
   const [categoryId, setCategoryId] = useState(initial?.categoryId ?? '');
   const [memo, setMemo] = useState(initial?.memo ?? '');
+  const subcategories = useSubcategories({ includeArchived: true });
+  const initialSubName = subcategories?.find((sc) => sc.id === initial?.subcategoryId)?.name ?? '';
+  const [subName, setSubName] = useState<string | null>(null);
+  // 編集時は、小分類の読み込み後に初期値を入れる（null = まだ触っていない）
+  const subValue = subName ?? initialSubName;
   const [error, setError] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
   const amountRef = useRef<HTMLInputElement>(null);
@@ -59,11 +67,13 @@ export default function TransactionForm({
 
     setSaving(true);
     try {
-      await onSubmit({ date, type, amount: parsed, categoryId, memo });
+      const subcategoryId = await resolveSubcategory(categoryId, subValue);
+      await onSubmit({ date, type, amount: parsed, categoryId, subcategoryId, memo });
       setError(null);
       if (!isEdit) {
         // 連続入力しやすいよう、日付・種別・カテゴリは残す
         setAmount('');
+        setSubName('');
         setMemo('');
         amountRef.current?.focus();
       }
@@ -91,7 +101,10 @@ export default function TransactionForm({
                 key={t}
                 type="button"
                 aria-pressed={type === t}
-                onClick={() => setType(t)}
+                onClick={() => {
+                  setType(t);
+                  if (t !== type) setSubName('');
+                }}
                 className={`px-4 py-2 text-sm ${
                   type === t
                     ? t === 'expense'
@@ -124,7 +137,14 @@ export default function TransactionForm({
         </label>
         <label className="flex flex-col gap-1">
           <span className="text-xs text-slate-500">カテゴリ</span>
-          <select value={categoryId} onChange={(e) => setCategoryId(e.target.value)} className={`${inputClass} w-36`}>
+          <select
+            value={categoryId}
+            onChange={(e) => {
+              setCategoryId(e.target.value);
+              setSubName('');
+            }}
+            className={`${inputClass} w-36`}
+          >
             {options.map((c) => (
               <option key={c.id} value={c.id}>
                 {c.name}
@@ -133,7 +153,18 @@ export default function TransactionForm({
             ))}
           </select>
         </label>
-        <label className="flex min-w-48 flex-1 flex-col gap-1">
+        <div className="flex flex-col gap-1">
+          <span className="text-xs text-slate-500">小分類（任意）</span>
+          <SubcategoryInput
+            label="小分類"
+            categoryId={categoryId}
+            subcategories={subcategories ?? []}
+            value={subValue}
+            onChange={setSubName}
+            className={`${inputClass} w-36`}
+          />
+        </div>
+        <label className="flex min-w-40 flex-1 flex-col gap-1">
           <span className="text-xs text-slate-500">メモ</span>
           <input type="text" value={memo} onChange={(e) => setMemo(e.target.value)} className={inputClass} />
         </label>

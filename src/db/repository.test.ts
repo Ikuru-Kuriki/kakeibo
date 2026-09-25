@@ -147,7 +147,7 @@ describe('DB v2 マイグレーション', () => {
       },
     });
     const backup = parseBackup(json);
-    expect(backup.schemaVersion).toBe(3);
+    expect(backup.schemaVersion).toBe(4);
     expect(backup.data.recurring).toEqual([]);
     expect(backup.data.categories[0]!.color).toBe('#2a78d6');
   });
@@ -182,10 +182,10 @@ describe('カテゴリ', () => {
 
 describe('固定費', () => {
   async function rentRule(startMonth = '2026-08') {
-    const { addRecurring } = await import('./repository');
+    const { addRecurring, resolveSubcategory } = await import('./repository');
     const rent = (await listCategories()).find((c) => c.name === '住居')!;
     return addRecurring({
-      name: '家賃',
+      subcategoryId: (await resolveSubcategory(rent.id, '家賃'))!,
       type: 'expense',
       categoryId: rent.id,
       amount: 85000,
@@ -204,7 +204,7 @@ describe('固定費', () => {
     ]);
 
     const tx = await confirmRecurring(rule.id, '2026-08', { amount: 86000 });
-    expect(tx).toMatchObject({ amount: 86000, memo: '家賃', date: '2026-08-31', recurringMonth: '2026-08' });
+    expect(tx).toMatchObject({ amount: 86000, memo: '', subcategoryId: rule.subcategoryId, date: '2026-08-31', recurringMonth: '2026-08' });
     await expect(confirmRecurring(rule.id, '2026-08')).rejects.toThrow('対応済み');
 
     await skipRecurring(rule.id, '2026-09');
@@ -229,12 +229,81 @@ describe('固定費', () => {
   });
 
   it('バックアップに含まれ、復元できる', async () => {
-    const { listRecurring } = await import('./repository');
+    const { listRecurring, listSubcategories } = await import('./repository');
     await rentRule();
     const json = JSON.stringify(await exportBackup());
     await db.delete();
     await db.open();
     await importBackup(parseBackup(json));
-    expect((await listRecurring()).map((r) => r.name)).toEqual(['家賃']);
+    const subs = await listSubcategories();
+    expect((await listRecurring()).map((r) => subs.find((sc) => sc.id === r.subcategoryId)?.name)).toEqual(['家賃']);
+  });
+});
+
+describe('小分類', () => {
+  it('名前から探し、なければ作る（空欄は null、アーカイブ済みは戻す）', async () => {
+    const { resolveSubcategory, listSubcategories, archiveSubcategory } = await import('./repository');
+    const food = (await listCategories()).find((c) => c.name === '食費')!;
+    expect(await resolveSubcategory(food.id, '  ')).toBeNull();
+    const a = await resolveSubcategory(food.id, '外食');
+    expect(await resolveSubcategory(food.id, ' 外食 ')).toBe(a);
+    await archiveSubcategory(a!);
+    expect(await listSubcategories()).toHaveLength(0);
+    expect(await resolveSubcategory(food.id, '外食')).toBe(a);
+    expect((await listSubcategories()).map((sc) => sc.name)).toEqual(['外食']);
+  });
+
+  it('取引の小分類はカテゴリと合っていなければ拒否する', async () => {
+    const { resolveSubcategory } = await import('./repository');
+    const cats = await listCategories();
+    const food = cats.find((c) => c.name === '食費')!;
+    const daily = cats.find((c) => c.name === '日用品')!;
+    const sub = await resolveSubcategory(food.id, '外食');
+    const base = { type: 'expense' as const, memo: '', date: '2026-09-01', amount: 100, subcategoryId: sub };
+    await expect(addTransaction({ ...base, categoryId: food.id })).resolves.toBeTruthy();
+    await expect(addTransaction({ ...base, categoryId: daily.id })).rejects.toThrow('小分類');
+  });
+
+  it('同じカテゴリで同じ名前への変更は拒否する', async () => {
+    const { resolveSubcategory, renameSubcategory } = await import('./repository');
+    const food = (await listCategories()).find((c) => c.name === '食費')!;
+    await resolveSubcategory(food.id, '外食');
+    const b = await resolveSubcategory(food.id, 'コンビニ');
+    await expect(renameSubcategory(b!, '外食')).rejects.toThrow('既にあります');
+  });
+});
+
+describe('DB v4 マイグレーション', () => {
+  it('v3 の固定費の名前が小分類になり、確定済みの取引にも付く', async () => {
+    const { default: Dexie } = await import('dexie');
+    const { KakeiboDB } = await import('./db');
+    const name = 'migration-v4-test';
+    await Dexie.delete(name);
+    const v3 = new Dexie(name);
+    v3.version(3).stores({
+      transactions: 'id, date, categoryId, updatedAt, recurringId',
+      categories: 'id, order, updatedAt',
+      budgets: 'id, &[yearMonth+categoryId], yearMonth, updatedAt',
+      settings: 'key',
+      recurring: 'id, updatedAt',
+    });
+    const meta = { createdAt: '', updatedAt: '', deletedAt: null };
+    await v3.table('recurring').add({
+      ...meta, id: 'r1', name: '家賃', type: 'expense', categoryId: 'c-rent', amount: 85000,
+      dayOfMonth: 27, startMonth: '2026-08', endMonth: null, skippedMonths: [],
+    });
+    await v3.table('transactions').add({
+      ...meta, id: 't1', date: '2026-08-27', amount: 85000, type: 'expense', categoryId: 'c-rent',
+      memo: '家賃', recurringId: 'r1', recurringMonth: '2026-08',
+    });
+    v3.close();
+
+    const v4 = new KakeiboDB(name);
+    const [sub] = await v4.subcategories.toArray();
+    expect(sub).toMatchObject({ categoryId: 'c-rent', name: '家賃' });
+    expect(await v4.recurring.get('r1')).toMatchObject({ subcategoryId: sub!.id });
+    expect(await v4.transactions.get('t1')).toMatchObject({ subcategoryId: sub!.id, memo: '' });
+    v4.close();
+    await Dexie.delete(name);
   });
 });
