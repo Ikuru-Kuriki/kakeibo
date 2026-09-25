@@ -82,9 +82,17 @@ export async function listCategories({ includeArchived = false } = {}): Promise<
   return includeArchived ? rows : rows.filter((c) => !c.archived);
 }
 
+async function assertUniqueName(name: string, type: Category['type'], exceptId?: Id): Promise<void> {
+  const dup = (await db.categories.filter(alive).toArray()).find(
+    (c) => c.type === type && c.name === name && c.id !== exceptId,
+  );
+  if (dup) throw new Error(`「${name}」は既にあります${dup.archived ? '（アーカイブ済み）' : ''}`);
+}
+
 export async function addCategory(input: CategoryInput): Promise<Category> {
   const name = input.name.trim();
   if (!name) throw new Error('カテゴリ名を入力してください');
+  await assertUniqueName(name, input.type);
   const last = await db.categories.orderBy('order').last();
   const row: Category = {
     ...newMeta(),
@@ -103,7 +111,32 @@ export async function updateCategory(
   patch: Partial<Pick<Category, 'name' | 'color' | 'order' | 'archived'>>,
 ): Promise<void> {
   // 種別（type）は既存取引との整合性が崩れるため変更不可
-  await db.categories.update(id, { ...patch, updatedAt: now() });
+  const current = await db.categories.get(id);
+  if (!current || !alive(current)) throw new Error('カテゴリが見つかりません');
+  const next = { ...patch };
+  if (next.name !== undefined) {
+    next.name = next.name.trim();
+    if (!next.name) throw new Error('カテゴリ名を入力してください');
+    await assertUniqueName(next.name, current.type, id);
+  }
+  await db.categories.update(id, { ...next, updatedAt: now() });
+}
+
+/** 同じ種別の中で表示順を1つ上（-1）または下（+1）へ動かす */
+export async function moveCategory(id: Id, direction: -1 | 1): Promise<void> {
+  await db.transaction('rw', db.categories, async () => {
+    const target = await db.categories.get(id);
+    if (!target) return;
+    const siblings = (await db.categories.orderBy('order').filter(alive).toArray()).filter(
+      (c) => c.type === target.type && c.archived === target.archived,
+    );
+    const index = siblings.findIndex((c) => c.id === id);
+    const other = siblings[index + direction];
+    if (!other) return;
+    const t = now();
+    await db.categories.update(target.id, { order: other.order, updatedAt: t });
+    await db.categories.update(other.id, { order: target.order, updatedAt: t });
+  });
 }
 
 /** カテゴリは削除せずアーカイブする（過去の取引の表示を壊さないため） */

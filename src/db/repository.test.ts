@@ -6,8 +6,12 @@ import {
   deleteTransaction,
   listBudgets,
   listCategories,
+  addCategory,
+  archiveCategory,
   listTransactionsInPeriod,
+  moveCategory,
   setBudget,
+  updateCategory,
   updateSettings,
 } from './repository';
 import { exportBackup, importBackup, parseBackup } from './backup';
@@ -145,5 +149,32 @@ describe('DB v2 マイグレーション', () => {
     const backup = parseBackup(json);
     expect(backup.schemaVersion).toBe(2);
     expect(backup.data.categories[0]!.color).toBe('#2a78d6');
+  });
+});
+
+describe('カテゴリ', () => {
+  it('同じ種別で名前の重複を拒否する（別種別なら可）', async () => {
+    await expect(addCategory({ name: '食費', type: 'expense', color: '#000000' })).rejects.toThrow('既にあります');
+    await expect(addCategory({ name: ' 食費 ', type: 'income', color: '#000000' })).resolves.toBeTruthy();
+    const other = (await listCategories()).find((c) => c.name === '日用品')!;
+    await expect(updateCategory(other.id, { name: '食費' })).rejects.toThrow('既にあります');
+  });
+
+  it('同じ種別の中で並べ替えられる', async () => {
+    const names = async () => (await listCategories()).filter((c) => c.type === 'expense').map((c) => c.name).slice(0, 3);
+    const nichiyo = (await listCategories()).find((c) => c.name === '日用品')!;
+    await moveCategory(nichiyo.id, -1);
+    expect(await names()).toEqual(['日用品', '食費', '住居']);
+    await moveCategory(nichiyo.id, -1); // 先頭ではそれ以上動かない
+    expect(await names()).toEqual(['日用品', '食費', '住居']);
+  });
+
+  it('アーカイブすると一覧（既定）から消え、戻すと復活する', async () => {
+    const food = (await listCategories()).find((c) => c.name === '食費')!;
+    await archiveCategory(food.id);
+    expect((await listCategories()).some((c) => c.id === food.id)).toBe(false);
+    expect((await listCategories({ includeArchived: true })).some((c) => c.id === food.id)).toBe(true);
+    await archiveCategory(food.id, false);
+    expect((await listCategories()).some((c) => c.id === food.id)).toBe(true);
   });
 });

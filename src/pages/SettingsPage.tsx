@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
 import PageHeader from '../components/PageHeader';
-import Placeholder from '../components/Placeholder';
+import CategoryManager from '../components/CategoryManager';
 import { backupFileName, exportBackup, importBackup, parseBackup } from '../db/backup';
 import { getStorageStatus, requestPersistentStorage, type StorageStatus } from '../db/db';
 import { updateSettings } from '../db/repository';
@@ -119,7 +119,10 @@ export default function SettingsPage() {
           どの状態でも、ブラウザの「閲覧履歴データの削除」で Cookie とサイトデータを消すとデータは消えます。
         </p>
       </section>
-      <Placeholder items={['カテゴリ管理（追加・名前/色の変更・並べ替え・アーカイブ）']} />
+      <section className="mb-8 rounded-lg border border-slate-200 bg-white p-6">
+        <h3 className="mb-2 font-bold">カテゴリ</h3>
+        <CategoryManager />
+      </section>
     </>
   );
 }
