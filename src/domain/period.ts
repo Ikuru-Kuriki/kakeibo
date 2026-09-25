@@ -84,3 +84,14 @@ export function formatYearMonthJa(ym: YearMonth): string {
   const { year, month } = parseYearMonth(ym);
   return `${year}年${month}月`;
 }
+
+/** 期間の最終日 */
+export function lastDayOfPeriod(ym: YearMonth, monthStartDay = 1): ISODate {
+  const [y, m, d] = periodRange(ym, monthStartDay).endExclusive.split('-').map(Number) as [number, number, number];
+  return toISODate(new Date(y, m - 1, d - 1));
+}
+
+/** 入力フォームの日付の初期値。今日がその期間内なら今日、そうでなければ期間の最終日 */
+export function defaultEntryDate(ym: YearMonth, monthStartDay = 1, todayDate: ISODate = today()): ISODate {
+  return periodOf(todayDate, monthStartDay) === ym ? todayDate : lastDayOfPeriod(ym, monthStartDay);
+}

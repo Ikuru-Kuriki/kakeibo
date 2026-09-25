@@ -9,6 +9,8 @@ interface Props {
   categories: readonly Category[];
   /** 編集時の初期値。未指定なら新規入力 */
   initial?: TransactionInput;
+  /** 新規入力時の日付の初期値（既定は今日） */
+  defaultDate?: string;
   submitLabel?: string;
   onSubmit: (input: TransactionInput) => Promise<void>;
   onCancel?: () => void;
@@ -19,9 +21,16 @@ const TYPE_LABELS: Record<EntryType, string> = { expense: '支出', income: '収
 const inputClass =
   'rounded-md border border-slate-300 bg-white px-3 py-2 text-sm focus:border-slate-500 focus:outline-none';
 
-export default function TransactionForm({ categories, initial, submitLabel = '追加', onSubmit, onCancel }: Props) {
+export default function TransactionForm({
+  categories,
+  initial,
+  defaultDate,
+  submitLabel = '追加',
+  onSubmit,
+  onCancel,
+}: Props) {
   const isEdit = initial !== undefined;
-  const [date, setDate] = useState(initial?.date ?? today());
+  const [date, setDate] = useState(initial?.date ?? defaultDate ?? today());
   const [type, setType] = useState<EntryType>(initial?.type ?? 'expense');
   const [amount, setAmount] = useState(initial ? String(initial.amount) : '');
   const [categoryId, setCategoryId] = useState(initial?.categoryId ?? '');
